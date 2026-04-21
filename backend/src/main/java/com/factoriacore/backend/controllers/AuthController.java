@@ -1,0 +1,258 @@
+package com.factoriacore.backend.controllers;
+
+import com.factoriacore.backend.models.AthleteProfile;
+import com.factoriacore.backend.models.User;
+import com.factoriacore.backend.models.enums.Gender;
+import com.factoriacore.backend.models.enums.UserRole;
+import com.factoriacore.backend.repositories.AthleteProfileRepository;
+import com.factoriacore.backend.repositories.UserRepository;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.oauth2.core.user.OAuth2User;
+import org.springframework.web.bind.annotation.*;
+
+import java.io.IOException;
+import java.time.LocalDate;
+import java.time.OffsetDateTime;
+import java.util.Optional;
+
+@RestController
+@RequestMapping("/api/auth")
+public class AuthController {
+
+    private final UserRepository userRepository;
+    private final AthleteProfileRepository athleteProfileRepository;
+
+    public AuthController(UserRepository userRepository,
+                          AthleteProfileRepository athleteProfileRepository) {
+        this.userRepository = userRepository;
+        this.athleteProfileRepository = athleteProfileRepository;
+    }
+
+    public static class CurrentUserDto {
+        private Long id;
+        private String fullName;
+        private String email;
+        private String role;
+        private String pictureUrl;
+        private Long athleteProfileId;
+
+        public CurrentUserDto(Long id, String fullName, String email,
+                              String role, String pictureUrl, Long athleteProfileId) {
+            this.id = id; this.fullName = fullName; this.email = email;
+            this.role = role; this.pictureUrl = pictureUrl; this.athleteProfileId = athleteProfileId;
+        }
+
+        public Long getId() { return id; }
+        public String getFullName() { return fullName; }
+        public String getEmail() { return email; }
+        public String getRole() { return role; }
+        public String getPictureUrl() { return pictureUrl; }
+        public Long getAthleteProfileId() { return athleteProfileId; }
+    }
+
+    public static class PendingOAuthUserDto {
+        private String fullName;
+        private String email;
+        private String pictureUrl;
+
+        public PendingOAuthUserDto(String fullName, String email, String pictureUrl) {
+            this.fullName = fullName; this.email = email; this.pictureUrl = pictureUrl;
+        }
+
+        public String getFullName() { return fullName; }
+        public String getEmail() { return email; }
+        public String getPictureUrl() { return pictureUrl; }
+    }
+
+    public static class CompleteOAuthRegisterRequest {
+        private String role;
+        private String fullName;
+        private String birthDate;       // ISO "YYYY-MM-DD"
+        private String sex;             // MALE | FEMALE | PREFER_NOT_TO_SAY
+        private Boolean menstrualTrackingEnabled;
+        private Boolean shareMenstrualDataWithCoach;
+        private Integer cycleLength;
+        private Integer menstrualDuration;
+        private String lastPeriodDate;  // ISO "YYYY-MM-DD"
+
+        public String getRole() { return role; }
+        public void setRole(String role) { this.role = role; }
+        public String getFullName() { return fullName; }
+        public void setFullName(String fullName) { this.fullName = fullName; }
+        public String getBirthDate() { return birthDate; }
+        public void setBirthDate(String birthDate) { this.birthDate = birthDate; }
+        public String getSex() { return sex; }
+        public void setSex(String sex) { this.sex = sex; }
+        public Boolean getMenstrualTrackingEnabled() { return menstrualTrackingEnabled; }
+        public void setMenstrualTrackingEnabled(Boolean v) { this.menstrualTrackingEnabled = v; }
+        public Boolean getShareMenstrualDataWithCoach() { return shareMenstrualDataWithCoach; }
+        public void setShareMenstrualDataWithCoach(Boolean v) { this.shareMenstrualDataWithCoach = v; }
+        public Integer getCycleLength() { return cycleLength; }
+        public void setCycleLength(Integer cycleLength) { this.cycleLength = cycleLength; }
+        public Integer getMenstrualDuration() { return menstrualDuration; }
+        public void setMenstrualDuration(Integer menstrualDuration) { this.menstrualDuration = menstrualDuration; }
+        public String getLastPeriodDate() { return lastPeriodDate; }
+        public void setLastPeriodDate(String lastPeriodDate) { this.lastPeriodDate = lastPeriodDate; }
+    }
+
+    @GetMapping("/oauth/login")
+    public void startGoogleLogin(HttpServletRequest request, HttpServletResponse response) throws IOException {
+        HttpSession session = request.getSession(true);
+        clearOAuthSession(session);
+        session.setAttribute("OAUTH_MODE", "login");
+        response.sendRedirect("http://localhost:8085/oauth2/authorization/google");
+    }
+
+    @GetMapping("/oauth/register/start")
+    public void startGoogleRegister(HttpServletRequest request, HttpServletResponse response) throws IOException {
+        HttpSession session = request.getSession(true);
+        clearOAuthSession(session);
+        session.setAttribute("OAUTH_MODE", "register");
+        response.sendRedirect("http://localhost:8085/oauth2/authorization/google");
+    }
+
+    @GetMapping("/oauth/pending")
+    public ResponseEntity<?> getPendingOAuthUser(HttpServletRequest request) {
+        HttpSession session = request.getSession(false);
+        if (session == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("NO_PENDING_OAUTH");
+
+        String email = (String) session.getAttribute("OAUTH_PENDING_EMAIL");
+        String fullName = (String) session.getAttribute("OAUTH_PENDING_FULL_NAME");
+        String pictureUrl = (String) session.getAttribute("OAUTH_PENDING_PICTURE_URL");
+
+        if (email == null || email.isBlank())
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("NO_PENDING_OAUTH");
+
+        return ResponseEntity.ok(new PendingOAuthUserDto(
+                fullName != null ? fullName : "", email, pictureUrl != null ? pictureUrl : ""));
+    }
+
+    @PostMapping("/oauth/register")
+    public ResponseEntity<?> completeOAuthRegister(@RequestBody CompleteOAuthRegisterRequest body,
+                                                   HttpServletRequest request) {
+        HttpSession session = request.getSession(false);
+        if (session == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("NO_PENDING_OAUTH");
+
+        String email          = (String) session.getAttribute("OAUTH_PENDING_EMAIL");
+        String givenName      = (String) session.getAttribute("OAUTH_PENDING_GIVEN_NAME");
+        String familyName     = (String) session.getAttribute("OAUTH_PENDING_FAMILY_NAME");
+        String provider       = (String) session.getAttribute("OAUTH_PENDING_PROVIDER");
+        String providerUserId = (String) session.getAttribute("OAUTH_PENDING_PROVIDER_USER_ID");
+        String pictureUrl     = (String) session.getAttribute("OAUTH_PENDING_PICTURE_URL");
+
+        if (email == null || providerUserId == null || provider == null)
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("NO_PENDING_OAUTH");
+
+        UserRole role;
+        try { role = UserRole.valueOf(body.getRole()); }
+        catch (Exception e) { return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("INVALID_ROLE"); }
+
+        Gender sex;
+        try { sex = Gender.valueOf(body.getSex()); }
+        catch (Exception e) { return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("INVALID_SEX"); }
+
+        Optional<User> existing = userRepository.findByEmail(email);
+        if (existing.isPresent()) {
+            clearOAuthSession(session);
+            return ResponseEntity.status(HttpStatus.CONFLICT).body("EMAIL_ALREADY_EXISTS");
+        }
+
+        String displayName = (body.getFullName() != null && !body.getFullName().isBlank())
+                ? body.getFullName() : (givenName != null ? givenName : email);
+
+        User user = new User();
+        user.setEmail(email);
+        user.setFullName(displayName);
+        user.setGivenName(givenName);
+        user.setFamilyName(familyName);
+        user.setGoogleId(providerUserId);
+        user.setPictureUrl(pictureUrl);
+        user.setRole(role);
+        user.setActive(true);
+        user.setCreatedAt(OffsetDateTime.now());
+        user.setUpdatedAt(OffsetDateTime.now());
+
+        if (body.getBirthDate() != null && !body.getBirthDate().isBlank()) {
+            user.setBirthDate(LocalDate.parse(body.getBirthDate()));
+        }
+
+        User saved = userRepository.save(user);
+
+        Long athleteProfileId = null;
+        if (role == UserRole.ATHLETE) {
+            AthleteProfile profile = new AthleteProfile();
+            profile.setUser(saved);
+            profile.setSex(sex);
+
+            if (body.getBirthDate() != null && !body.getBirthDate().isBlank()) {
+                profile.setBirthDate(LocalDate.parse(body.getBirthDate()));
+            }
+
+            if (sex == Gender.FEMALE && Boolean.TRUE.equals(body.getMenstrualTrackingEnabled())) {
+                profile.setMenstrualTrackingEnabled(true);
+                profile.setShareMenstrualDataWithCoach(
+                        Boolean.TRUE.equals(body.getShareMenstrualDataWithCoach()));
+                if (body.getCycleLength() != null)       profile.setCycleLength(body.getCycleLength());
+                if (body.getMenstrualDuration() != null) profile.setMenstrualDuration(body.getMenstrualDuration());
+                if (body.getLastPeriodDate() != null && !body.getLastPeriodDate().isBlank()) {
+                    profile.setLastPeriodDate(LocalDate.parse(body.getLastPeriodDate()));
+                }
+            }
+            athleteProfileId = athleteProfileRepository.save(profile).getId();
+        }
+
+        clearOAuthSession(session);
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(new CurrentUserDto(
+                saved.getId(), saved.getFullName(), saved.getEmail(),
+                saved.getRole().name(), saved.getPictureUrl(), athleteProfileId));
+    }
+
+    @GetMapping("/me")
+    public ResponseEntity<?> me(Authentication authentication) {
+        if (authentication == null || !(authentication.getPrincipal() instanceof OAuth2User oauthUser))
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("NOT_AUTHENTICATED");
+
+        String email = oauthUser.getAttribute("email");
+        if (email == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("EMAIL_NOT_AVAILABLE");
+
+        Optional<User> userOpt = userRepository.findByEmail(email);
+        if (userOpt.isEmpty()) return ResponseEntity.status(HttpStatus.NOT_FOUND).body("USER_NOT_FOUND");
+
+        User user = userOpt.get();
+        Long athleteProfileId = athleteProfileRepository.findByUserId(user.getId())
+                .map(AthleteProfile::getId).orElse(null);
+
+        return ResponseEntity.ok(new CurrentUserDto(
+                user.getId(), user.getFullName(), user.getEmail(),
+                user.getRole().name(), user.getPictureUrl(), athleteProfileId));
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<?> logout(HttpServletRequest request) {
+        try {
+            request.logout();
+            HttpSession session = request.getSession(false);
+            if (session != null) session.invalidate();
+            return ResponseEntity.ok("LOGOUT_OK");
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("LOGOUT_ERROR");
+        }
+    }
+
+    private void clearOAuthSession(HttpSession session) {
+        session.removeAttribute("OAUTH_MODE");
+        session.removeAttribute("OAUTH_PENDING_EMAIL");
+        session.removeAttribute("OAUTH_PENDING_FULL_NAME");
+        session.removeAttribute("OAUTH_PENDING_GIVEN_NAME");
+        session.removeAttribute("OAUTH_PENDING_FAMILY_NAME");
+        session.removeAttribute("OAUTH_PENDING_PROVIDER");
+        session.removeAttribute("OAUTH_PENDING_PROVIDER_USER_ID");
+        session.removeAttribute("OAUTH_PENDING_PICTURE_URL");
+    }
+}

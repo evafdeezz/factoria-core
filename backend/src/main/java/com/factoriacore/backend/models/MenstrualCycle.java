@@ -1,0 +1,54 @@
+package com.factoriacore.backend.models;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.persistence.*;
+
+import java.time.LocalDate;
+
+@Entity
+@Table(name = "menstrual_cycles")
+public class MenstrualCycle {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "athlete_id", nullable = false)
+    private AthleteProfile athlete;
+
+    @Column(name = "start_date", nullable = false)
+    private LocalDate startDate;
+
+    @Column(name = "cycle_length")
+    private Integer cycleLength;
+
+    @Column(name = "bleeding_days")
+    private Integer bleedingDays;
+
+    @Column(name = "notes", length = 1000)
+    private String notes;
+
+    public MenstrualCycle() {}
+
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
+
+    @JsonIgnore
+    public AthleteProfile getAthlete() { return athlete; }
+    @JsonProperty("athlete")
+    public void setAthlete(AthleteProfile athlete) { this.athlete = athlete; }
+
+    public LocalDate getStartDate() { return startDate; }
+    public void setStartDate(LocalDate startDate) { this.startDate = startDate; }
+
+    public Integer getCycleLength() { return cycleLength; }
+    public void setCycleLength(Integer cycleLength) { this.cycleLength = cycleLength; }
+
+    public Integer getBleedingDays() { return bleedingDays; }
+    public void setBleedingDays(Integer bleedingDays) { this.bleedingDays = bleedingDays; }
+
+    public String getNotes() { return notes; }
+    public void setNotes(String notes) { this.notes = notes; }
+}
