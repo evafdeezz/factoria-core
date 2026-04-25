@@ -4,6 +4,7 @@ import com.factoriacore.backend.security.ApiKeyFilter;
 import com.factoriacore.backend.security.CustomOAuth2UserService;
 import com.factoriacore.backend.security.OAuth2AuthenticationSuccessHandler;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.Customizer;
@@ -20,6 +21,9 @@ public class SecurityConfig {
     private final OAuth2AuthenticationSuccessHandler successHandler;
     private final ApiKeyFilter apiKeyFilter;
 
+    @Value("${app.frontend-url}")
+    private String frontendUrl;
+
     public SecurityConfig(CustomOAuth2UserService customOAuth2UserService,
                           OAuth2AuthenticationSuccessHandler successHandler,
                           ApiKeyFilter apiKeyFilter) {
@@ -33,11 +37,7 @@ public class SecurityConfig {
         http
                 .cors(Customizer.withDefaults())
                 .csrf(csrf -> csrf.disable())
-
-                // El ApiKeyFilter se ejecuta ANTES del filtro OAuth2
-                // para las rutas /api/n8n/** que no usan sesión
                 .addFilterBefore(apiKeyFilter, UsernamePasswordAuthenticationFilter.class)
-
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
                                 "/",
@@ -48,11 +48,7 @@ public class SecurityConfig {
                                 "/api/auth/oauth/login",
                                 "/api/auth/oauth/register/start"
                         ).permitAll()
-
-                        // n8n endpoints: permitAll porque el ApiKeyFilter
-                        // ya se encarga de la autenticación por API key
                         .requestMatchers("/api/n8n/**").permitAll()
-
                         .requestMatchers(
                                 "/api/auth/me",
                                 "/api/auth/logout",
@@ -70,7 +66,7 @@ public class SecurityConfig {
                         .userInfoEndpoint(userInfo -> userInfo.userService(customOAuth2UserService))
                         .successHandler(successHandler)
                         .failureHandler((request, response, exception) ->
-                                response.sendRedirect("http://localhost:3000/login?oauthError=google_auth_failed"))
+                                response.sendRedirect(frontendUrl + "/login?oauthError=google_auth_failed"))
                 )
                 .logout(logout -> logout
                         .logoutUrl("/api/auth/logout")

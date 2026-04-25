@@ -6,6 +6,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
@@ -16,7 +17,8 @@ import java.util.Optional;
 @Component
 public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccessHandler {
 
-    private static final String FRONTEND_BASE_URL = "http://localhost:3000";
+    @Value("${app.frontend-url}")
+    private String frontendBaseUrl;
 
     private final UserRepository userRepository;
 
@@ -43,7 +45,7 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
 
         if (email == null || email.isBlank()) {
             clearOAuthSession(session);
-            response.sendRedirect(FRONTEND_BASE_URL + "/login?tab=login&error=EMAIL_NOT_AVAILABLE");
+            response.sendRedirect(frontendBaseUrl + "/login?tab=login&error=EMAIL_NOT_AVAILABLE");
             return;
         }
 
@@ -52,7 +54,7 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
         if ("register".equals(mode)) {
             if (existingUserOpt.isPresent()) {
                 clearOAuthSession(session);
-                response.sendRedirect(FRONTEND_BASE_URL + "/login?tab=login&error=EMAIL_ALREADY_EXISTS");
+                response.sendRedirect(frontendBaseUrl + "/login?tab=login&error=EMAIL_ALREADY_EXISTS");
                 return;
             }
 
@@ -64,14 +66,14 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
             session.setAttribute("OAUTH_PENDING_PROVIDER_USER_ID", googleId);
             session.setAttribute("OAUTH_PENDING_PICTURE_URL", pictureUrl);
 
-            response.sendRedirect(FRONTEND_BASE_URL + "/register/complete");
+            response.sendRedirect(frontendBaseUrl + "/register/complete");
             return;
         }
 
         if ("login".equals(mode)) {
             if (existingUserOpt.isEmpty()) {
                 clearOAuthSession(session);
-                response.sendRedirect(FRONTEND_BASE_URL + "/login?tab=login&error=USER_NOT_FOUND");
+                response.sendRedirect(frontendBaseUrl + "/login?tab=login&error=USER_NOT_FOUND");
                 return;
             }
 
@@ -86,7 +88,7 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
             userRepository.save(user);
 
             clearOAuthSession(session);
-            response.sendRedirect(FRONTEND_BASE_URL + "/auth/callback");
+            response.sendRedirect(frontendBaseUrl + "/auth/callback");
             return;
         }
 
@@ -102,7 +104,7 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
             userRepository.save(user);
 
             clearOAuthSession(session);
-            response.sendRedirect(FRONTEND_BASE_URL + "/auth/callback");
+            response.sendRedirect(frontendBaseUrl + "/auth/callback");
         } else {
             session.setAttribute("OAUTH_PENDING_EMAIL", email);
             session.setAttribute("OAUTH_PENDING_FULL_NAME", fullName);
@@ -112,7 +114,7 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
             session.setAttribute("OAUTH_PENDING_PROVIDER_USER_ID", googleId);
             session.setAttribute("OAUTH_PENDING_PICTURE_URL", pictureUrl);
 
-            response.sendRedirect(FRONTEND_BASE_URL + "/register/complete");
+            response.sendRedirect(frontendBaseUrl + "/register/complete");
         }
     }
 
