@@ -13,57 +13,20 @@ type GroupedSessions = Record<string, TrainingSessionDto[]>;
 export default function AthleteSessionsPage() {
   const { user } = useCurrentUser();
 
-  // Sin usuario
-  if (!user) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-sky-900 text-slate-100">
-        <div className="text-center space-y-2">
-          <p className="text-sm text-slate-200">No has iniciado sesión.</p>
-          <Link
-            href="/login"
-            className="text-xs text-sky-300 hover:text-sky-200 underline"
-          >
-            Ir a la pantalla de login →
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
-  // No es atleta
-  if (user.role !== "ATHLETE") {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-sky-900 text-slate-100">
-        <p className="text-xs text-slate-300">
-          Esta pantalla solo está disponible para atletas.
-        </p>
-      </div>
-    );
-  }
-
-  // Sin perfil de atleta creado aún
-  if (!user.athleteProfileId) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-sky-900 text-slate-100">
-        <p className="text-xs text-slate-300">
-          Aún no tienes perfil de atleta. Completa tu configuración en Ajustes.
-        </p>
-      </div>
-    );
-  }
-
-  const athleteId = user.athleteProfileId;
-
   const [sessions, setSessions] = useState<TrainingSessionDto[]>([]);
   const [grouped, setGrouped] = useState<GroupedSessions>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const athleteId = user?.athleteProfileId;
+
   useEffect(() => {
+    if (!athleteId) return;
+
     async function load() {
       try {
         setLoading(true);
-        const data = await getAthleteSessions(athleteId);
+        const data = await getAthleteSessions(athleteId!);
 
         const sorted = [...data].sort(
           (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
@@ -87,6 +50,42 @@ export default function AthleteSessionsPage() {
 
     void load();
   }, [athleteId]);
+
+  if (!user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-sky-900 text-slate-100">
+        <div className="text-center space-y-2">
+          <p className="text-sm text-slate-200">No has iniciado sesión.</p>
+          <Link
+            href="/login"
+            className="text-xs text-sky-300 hover:text-sky-200 underline"
+          >
+            Ir a la pantalla de login →
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  if (user.role !== "ATHLETE") {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-sky-900 text-slate-100">
+        <p className="text-xs text-slate-300">
+          Esta pantalla solo está disponible para atletas.
+        </p>
+      </div>
+    );
+  }
+
+  if (!user.athleteProfileId) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-sky-900 text-slate-100">
+        <p className="text-xs text-slate-300">
+          Aún no tienes perfil de atleta. Completa tu configuración en Ajustes.
+        </p>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
@@ -156,10 +155,10 @@ export default function AthleteSessionsPage() {
                     </div>
 
                     <Link
-                      href={`/athlete/sessions/${session.id}/result`}
+                      href={`/athlete/sessions/${session.id}`}
                       className="text-[11px] font-medium text-sky-300 hover:text-sky-200"
                     >
-                      Ver / registrar resultado →
+                      Ver entrenamiento →
                     </Link>
                   </div>
                 ))}
