@@ -6,7 +6,7 @@ import Image from "next/image";
 import { useCurrentUser } from "@/components/CurrentUserProvider";
 
 const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8085/api";
+  process.env.NEXT_PUBLIC_API_BASE_URL || "http://20.251.152.141.nip.io:8085/api";
 
 type PendingOAuthUser = {
   fullName: string;

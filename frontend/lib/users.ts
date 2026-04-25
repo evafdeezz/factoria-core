@@ -1,5 +1,5 @@
 export const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8085/api";
+  process.env.NEXT_PUBLIC_API_BASE_URL || "http://20.251.152.141.nip.io:8085/api";
 
 export type UserRole = "COACH" | "ATHLETE";
 
@@ -58,6 +58,7 @@ export async function getCoaches(): Promise<UserDto[]> {
 export interface CreateUserPayload {
   fullName: string;
   email: string;
+  birthDate?: string | null;
   role: UserRole;
   givenName?: string | null;
   familyName?: string | null;
@@ -67,6 +68,7 @@ export interface CreateUserPayload {
 export interface UpdateUserPayload {
   fullName?: string;
   email?: string;
+  birthDate?: string | null;
   givenName?: string | null;
   familyName?: string | null;
   pictureUrl?: string | null;

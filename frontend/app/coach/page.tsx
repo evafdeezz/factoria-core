@@ -7,7 +7,7 @@ import { getGroupsByCoach, GroupDto } from "@/lib/groups";
 import { useCurrentUser } from "@/components/CurrentUserProvider";
 
 const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8085/api";
+  process.env.NEXT_PUBLIC_API_BASE_URL || "http://20.251.152.141.nip.io:8085/api";
 
 export default function CoachHomePage() {
   const router = useRouter();
