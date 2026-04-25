@@ -9,6 +9,7 @@ import com.factoriacore.backend.repositories.UserRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -23,6 +24,9 @@ import java.util.Optional;
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
+
+    @Value("${app.backend-url}")
+    private String backendUrl;
 
     private final UserRepository userRepository;
     private final AthleteProfileRepository athleteProfileRepository;
@@ -72,13 +76,13 @@ public class AuthController {
     public static class CompleteOAuthRegisterRequest {
         private String role;
         private String fullName;
-        private String birthDate;       // ISO "YYYY-MM-DD"
-        private String sex;             // MALE | FEMALE | PREFER_NOT_TO_SAY
+        private String birthDate;
+        private String sex;
         private Boolean menstrualTrackingEnabled;
         private Boolean shareMenstrualDataWithCoach;
         private Integer cycleLength;
         private Integer menstrualDuration;
-        private String lastPeriodDate;  // ISO "YYYY-MM-DD"
+        private String lastPeriodDate;
 
         public String getRole() { return role; }
         public void setRole(String role) { this.role = role; }
@@ -105,7 +109,7 @@ public class AuthController {
         HttpSession session = request.getSession(true);
         clearOAuthSession(session);
         session.setAttribute("OAUTH_MODE", "login");
-        response.sendRedirect("http://localhost:8085/oauth2/authorization/google");
+        response.sendRedirect(backendUrl + "/oauth2/authorization/google");
     }
 
     @GetMapping("/oauth/register/start")
@@ -113,7 +117,7 @@ public class AuthController {
         HttpSession session = request.getSession(true);
         clearOAuthSession(session);
         session.setAttribute("OAUTH_MODE", "register");
-        response.sendRedirect("http://localhost:8085/oauth2/authorization/google");
+        response.sendRedirect(backendUrl + "/oauth2/authorization/google");
     }
 
     @GetMapping("/oauth/pending")
