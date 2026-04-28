@@ -1,5 +1,5 @@
 export const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL || "http://20.251.152.141.nip.io:8085/api";
+  process.env.NEXT_PUBLIC_API_BASE_URL || "http://20.251.152.141:8085/api";
 
 // Respuesta básica — solo IDs planos
 export interface GroupMemberDto {
