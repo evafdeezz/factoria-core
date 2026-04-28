@@ -21,7 +21,7 @@ export interface CurrentUserApiResponse {
 }
 
 export const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL || "https://20.251.152.141:8085/api";
+  process.env.NEXT_PUBLIC_API_BASE_URL || "https://factoriacore.duckdns.org/api";
 
 export function saveCurrentUser(user: CurrentUser) {
   if (typeof window === "undefined") return;

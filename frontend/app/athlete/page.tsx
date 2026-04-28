@@ -9,7 +9,7 @@ import { getAthleteTodaySessions, TrainingSessionDto } from "@/lib/trainingSessi
 import CycleBlock from "@/components/CycleBlock";
 
 const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL || "http://20.251.152.141:8085/api";
+  process.env.NEXT_PUBLIC_API_BASE_URL || "https://factoriacore.duckdns.org/api";
 
 function formatDate(date: Date): string {
   return date.toISOString().slice(0, 10);
