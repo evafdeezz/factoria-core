@@ -9,7 +9,6 @@ export interface GroupDto {
   competitionCategory?: string | null;
   discipline: string;
   distanceProfile: string;
-  trainingSlot?: string | null;
   joinCode?: string | null;
   active: boolean;
   createdAt?: string;
@@ -74,7 +73,6 @@ export interface CreateGroupPayload {
   competitionCategory?: string | null;
   discipline: string;
   distanceProfile: string;
-  trainingSlot?: string | null;
   joinCode?: string | null;
   active?: boolean;
 }

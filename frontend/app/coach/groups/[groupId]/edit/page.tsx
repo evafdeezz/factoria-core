@@ -20,7 +20,6 @@ export default function EditGroupPage() {
   const [competitionCategory, setCompetitionCategory] = useState("");
   const [discipline, setDiscipline] = useState("GENERAL");
   const [distanceProfile, setDistanceProfile] = useState("MIXTO");
-  const [trainingSlot, setTrainingSlot] = useState("");
   const [active, setActive] = useState(true);
 
   useEffect(() => {
@@ -35,7 +34,6 @@ export default function EditGroupPage() {
         setCompetitionCategory(g.competitionCategory ?? "");
         setDiscipline(g.discipline ?? "GENERAL");
         setDistanceProfile(g.distanceProfile ?? "MIXTO");
-        setTrainingSlot(g.trainingSlot ?? "");
         setActive(g.active);
       } catch (err) {
         console.error(err);
@@ -65,7 +63,6 @@ export default function EditGroupPage() {
         competitionCategory: competitionCategory || null,
         discipline,
         distanceProfile,
-        trainingSlot: trainingSlot || null,
         active,
       });
       router.push(`/coach/groups/${groupId}`);

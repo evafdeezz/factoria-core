@@ -7,10 +7,7 @@ export interface AthleteProfileDto {
   sex?: string | null;           // MALE | FEMALE | PREFER_NOT_TO_SAY
   discipline?: string | null;
   distanceProfile?: string | null;
-  trainingSlot?: string | null;
   competitionCategory?: string | null;
-  primaryEvent?: string | null;
-  avatarUrl?: string | null;
   menstrualTrackingEnabled?: boolean;
   shareMenstrualDataWithCoach?: boolean;
   cycleLength?: number | null;

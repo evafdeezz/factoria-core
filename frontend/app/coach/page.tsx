@@ -192,7 +192,6 @@ export default function CoachHomePage() {
 
               <p className="text-[11px] text-slate-500 mt-1">
                 {g.distanceProfile ?? "Sin perfil"} ·{" "}
-                {g.trainingSlot ?? "Sin turno"}
               </p>
 
               {g.joinCode && (
