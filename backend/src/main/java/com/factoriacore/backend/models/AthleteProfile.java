@@ -36,21 +36,6 @@ public class AthleteProfile {
     @Column(name = "distance_profile", nullable = false)
     private DistanceProfile distanceProfile = DistanceProfile.MIXTO;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "training_slot")
-    private TrainingSlot trainingSlot;
-
-    @Enumerated(EnumType.STRING)
-    @Column(name = "competition_category")
-    private CompetitionCategory competitionCategory;
-
-    @Enumerated(EnumType.STRING)
-    @Column(name = "primary_event")
-    private PrimaryEvent primaryEvent;
-
-    @Column(name = "avatar_url", length = 500)
-    private String avatarUrl;
-
     @Column(name = "menstrual_tracking_enabled", nullable = false)
     private boolean menstrualTrackingEnabled = false;
 
@@ -96,18 +81,6 @@ public class AthleteProfile {
 
     public DistanceProfile getDistanceProfile() { return distanceProfile; }
     public void setDistanceProfile(DistanceProfile distanceProfile) { this.distanceProfile = distanceProfile; }
-
-    public TrainingSlot getTrainingSlot() { return trainingSlot; }
-    public void setTrainingSlot(TrainingSlot trainingSlot) { this.trainingSlot = trainingSlot; }
-
-    public CompetitionCategory getCompetitionCategory() { return competitionCategory; }
-    public void setCompetitionCategory(CompetitionCategory competitionCategory) { this.competitionCategory = competitionCategory; }
-
-    public PrimaryEvent getPrimaryEvent() { return primaryEvent; }
-    public void setPrimaryEvent(PrimaryEvent primaryEvent) { this.primaryEvent = primaryEvent; }
-
-    public String getAvatarUrl() { return avatarUrl; }
-    public void setAvatarUrl(String avatarUrl) { this.avatarUrl = avatarUrl; }
 
     public boolean isMenstrualTrackingEnabled() { return menstrualTrackingEnabled; }
     public void setMenstrualTrackingEnabled(boolean menstrualTrackingEnabled) { this.menstrualTrackingEnabled = menstrualTrackingEnabled; }

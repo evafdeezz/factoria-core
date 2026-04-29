@@ -59,7 +59,6 @@ public class GroupController {
         if (incoming.getCompetitionCategory() != null) existing.setCompetitionCategory(incoming.getCompetitionCategory());
         if (incoming.getDiscipline() != null)          existing.setDiscipline(incoming.getDiscipline());
         if (incoming.getDistanceProfile() != null)     existing.setDistanceProfile(incoming.getDistanceProfile());
-        if (incoming.getTrainingSlot() != null)        existing.setTrainingSlot(incoming.getTrainingSlot());
         existing.setActive(incoming.isActive());
 
         return repository.save(existing);

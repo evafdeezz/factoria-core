@@ -3,7 +3,6 @@ package com.factoriacore.backend.models;
 import com.factoriacore.backend.models.enums.CompetitionCategory;
 import com.factoriacore.backend.models.enums.DisciplineType;
 import com.factoriacore.backend.models.enums.DistanceProfile;
-import com.factoriacore.backend.models.enums.TrainingSlot;
 import jakarta.persistence.*;
 
 import java.time.OffsetDateTime;
@@ -37,10 +36,6 @@ public class Group {
     @Column(name = "distance_profile", nullable = false)
     private DistanceProfile distanceProfile = DistanceProfile.MIXTO;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "training_slot")
-    private TrainingSlot trainingSlot;
-
     @Column(name = "join_code", unique = true, length = 50)
     private String joinCode;
 
@@ -61,7 +56,6 @@ public class Group {
                  CompetitionCategory competitionCategory,
                  DisciplineType discipline,
                  DistanceProfile distanceProfile,
-                 TrainingSlot trainingSlot,
                  String joinCode,
                  boolean active,
                  OffsetDateTime createdAt) {
@@ -72,7 +66,6 @@ public class Group {
         this.competitionCategory = competitionCategory;
         this.discipline = discipline;
         this.distanceProfile = distanceProfile;
-        this.trainingSlot = trainingSlot;
         this.joinCode = joinCode;
         this.active = active;
         this.createdAt = createdAt;
@@ -113,10 +106,6 @@ public class Group {
         return distanceProfile;
     }
 
-    public TrainingSlot getTrainingSlot() {
-        return trainingSlot;
-    }
-
     public String getJoinCode() {
         return joinCode;
     }
@@ -155,10 +144,6 @@ public class Group {
 
     public void setDistanceProfile(DistanceProfile distanceProfile) {
         this.distanceProfile = distanceProfile;
-    }
-
-    public void setTrainingSlot(TrainingSlot trainingSlot) {
-        this.trainingSlot = trainingSlot;
     }
 
     public void setJoinCode(String joinCode) {
