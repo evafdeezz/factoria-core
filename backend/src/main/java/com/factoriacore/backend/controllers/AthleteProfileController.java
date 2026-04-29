@@ -46,7 +46,6 @@ public class AthleteProfileController {
         if (incoming.getSex() != null)                profile.setSex(incoming.getSex());
         if (incoming.getDiscipline() != null)         profile.setDiscipline(incoming.getDiscipline());
         if (incoming.getDistanceProfile() != null)    profile.setDistanceProfile(incoming.getDistanceProfile());
-        if (incoming.getPrimaryEvent() != null)       profile.setPrimaryEvent(incoming.getPrimaryEvent());
         if (incoming.getNotes() != null)              profile.setNotes(incoming.getNotes());
 
         // Menstruacion
