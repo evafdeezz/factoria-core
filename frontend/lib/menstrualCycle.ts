@@ -2,9 +2,10 @@ export const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL || "https://factoriacore.duckdns.org/api";
 
 export interface CycleStatusDto {
+  cycleId: number | null;        // ← añadir este campo
   cycleDay: number;
   daysOverdue: number;
-  isLate: boolean;        // true si el ciclo se ha pasado de la duración esperada
+  isLate: boolean;
   phase: "MENSTRUAL" | "FOLLICULAR" | "OVULATORY" | "LUTEAL" | null;
   phaseLabel: string;
   summary: string;
@@ -13,6 +14,15 @@ export interface CycleStatusDto {
   emoji: string;
   totalCycleLength: number;
   lastPeriodDate: string;
+}
+
+export interface MenstrualCycleDto {
+  id: number;
+  athleteId: number;
+  startDate: string;
+  cycleLength?: number | null;
+  bleedingDays?: number | null;
+  notes?: string | null;
 }
 
 export async function getCycleStatus(
@@ -27,10 +37,11 @@ export async function getCycleStatus(
   return res.json();
 }
 
+// Devuelve el cycleId del ciclo recién creado
 export async function registerPeriod(
   athleteId: number,
   startDate?: string | null
-): Promise<void> {
+): Promise<{ cycleId: number; startDate: string }> {
   const res = await fetch(`${API_BASE_URL}/menstrual/${athleteId}/register`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -42,4 +53,16 @@ export async function registerPeriod(
     console.error("Error al registrar período:", txt);
     throw new Error("No se pudo registrar el período");
   }
+  return res.json();
+}
+
+export async function getCycleHistory(
+  athleteId: number
+): Promise<MenstrualCycleDto[]> {
+  const res = await fetch(`${API_BASE_URL}/menstrual/${athleteId}/history`, {
+    cache: "no-store",
+    credentials: "include",
+  });
+  if (!res.ok) throw new Error("Error al obtener el historial de ciclos");
+  return res.json();
 }

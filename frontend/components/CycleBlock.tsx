@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { getCycleStatus, registerPeriod, CycleStatusDto } from "@/lib/menstrualCycle";
 
 interface Props {
@@ -24,6 +25,7 @@ const PHASE_BADGE: Record<string, string> = {
 };
 
 export default function CycleBlock({ athleteId }: Props) {
+  const router = useRouter();
   const [status, setStatus] = useState<CycleStatusDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -50,11 +52,13 @@ export default function CycleBlock({ athleteId }: Props) {
   async function handleRegister() {
     setRegistering(true);
     try {
-      await registerPeriod(athleteId, selectedDate);
+      const result = await registerPeriod(athleteId, selectedDate);
       setRegisterSuccess(true);
       setShowModal(false);
       await load();
       setTimeout(() => setRegisterSuccess(false), 3000);
+      // Ir directamente al diario del ciclo recién creado
+      router.push(`/athlete/menstrual/${result.cycleId}`);
     } catch {
       // user can retry
     } finally {
@@ -167,6 +171,27 @@ export default function CycleBlock({ athleteId }: Props) {
             Período registrado correctamente ✓
           </p>
         )}
+
+        {/* Enlaces al diario e historial */}
+        <div className="flex items-center gap-4 pt-1">
+          {status.cycleId && (
+            <button
+              type="button"
+              onClick={() => router.push(`/athlete/menstrual/${status.cycleId}`)}
+              className="text-[11px] text-sky-400 hover:text-sky-300 underline"
+            >
+              📓 Ver diario de este ciclo →
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => router.push("/athlete/menstrual")}
+            className="text-[11px] text-slate-400 hover:text-slate-200 underline"
+          >
+            Ver ciclos anteriores →
+          </button>
+        </div>
+
       </div>
 
       {/* Modal */}
