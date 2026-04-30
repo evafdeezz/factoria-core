@@ -16,8 +16,8 @@ public class MenstrualEntry {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "athlete_id", nullable = false)
-    private AthleteProfile athlete;
+    @JoinColumn(name = "cycle_id", nullable = false)
+    private MenstrualCycle cycle;
 
     @Column(name = "entry_date", nullable = false)
     private LocalDate date;
@@ -50,9 +50,11 @@ public class MenstrualEntry {
     public void setId(Long id) { this.id = id; }
 
     @JsonIgnore
-    public AthleteProfile getAthlete() { return athlete; }
-    @JsonProperty("athlete")
-    public void setAthlete(AthleteProfile athlete) { this.athlete = athlete; }
+    public MenstrualCycle getCycle() { return cycle; }
+    @JsonProperty("cycle")
+    public void setCycle(MenstrualCycle cycle) { this.cycle = cycle; }
+
+    public Long getCycleId() { return cycle != null ? cycle.getId() : null; }
 
     public LocalDate getDate() { return date; }
     public void setDate(LocalDate date) { this.date = date; }

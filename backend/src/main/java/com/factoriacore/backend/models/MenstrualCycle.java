@@ -5,6 +5,8 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "menstrual_cycles")
@@ -30,6 +32,9 @@ public class MenstrualCycle {
     @Column(name = "notes", length = 1000)
     private String notes;
 
+    @OneToMany(mappedBy = "cycle", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    private List<MenstrualEntry> entries = new ArrayList<>();
+
     public MenstrualCycle() {}
 
     public Long getId() { return id; }
@@ -39,6 +44,8 @@ public class MenstrualCycle {
     public AthleteProfile getAthlete() { return athlete; }
     @JsonProperty("athlete")
     public void setAthlete(AthleteProfile athlete) { this.athlete = athlete; }
+
+    public Long getAthleteId() { return athlete != null ? athlete.getId() : null; }
 
     public LocalDate getStartDate() { return startDate; }
     public void setStartDate(LocalDate startDate) { this.startDate = startDate; }
@@ -51,4 +58,8 @@ public class MenstrualCycle {
 
     public String getNotes() { return notes; }
     public void setNotes(String notes) { this.notes = notes; }
+
+    @JsonIgnore
+    public List<MenstrualEntry> getEntries() { return entries; }
+    public void setEntries(List<MenstrualEntry> entries) { this.entries = entries; }
 }

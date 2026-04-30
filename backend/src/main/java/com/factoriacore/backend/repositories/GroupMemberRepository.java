@@ -17,6 +17,7 @@ public interface GroupMemberRepository extends JpaRepository<GroupMember, Long>
     Optional<GroupMember> findByGroupAndAthlete(Group group, AthleteProfile athlete);
 
     boolean existsByGroupAndAthlete(Group group, AthleteProfile athlete);
+    boolean existsByAthlete_IdAndGroup_CoachId(Long athleteId, Long coachId);
 
     // Returns groupIds directly to avoid lazy-loading Group in controllers
     @Query("SELECT gm.group.id FROM GroupMember gm WHERE gm.athlete.id = :athleteId AND gm.active = true")
