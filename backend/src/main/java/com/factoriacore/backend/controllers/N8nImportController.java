@@ -141,4 +141,9 @@ public class N8nImportController {
         }
         return base + " - Semana " + weekNumber;
     }
+
+    @GetMapping("/groups")
+    public ResponseEntity<List<Group>> getGroups() {
+        return ResponseEntity.ok(groupRepository.findAll());
+    }
 }
