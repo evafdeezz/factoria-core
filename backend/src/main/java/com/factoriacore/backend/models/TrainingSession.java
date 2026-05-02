@@ -1,7 +1,5 @@
 package com.factoriacore.backend.models;
 
-import com.factoriacore.backend.models.enums.SessionStatus;
-import com.factoriacore.backend.models.enums.TrainingSource;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
@@ -37,35 +35,10 @@ public class TrainingSession {
     @Column(name = "coach_id", nullable = false)
     private Long coachId;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "source", nullable = false)
-    private TrainingSource source = TrainingSource.MANUAL;
-
-    @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false)
-    private SessionStatus status = SessionStatus.PLANNED;
-
-    @Column(name = "raw_text", columnDefinition = "TEXT")
-    private String rawText;
-
     @Column(name = "created_at", nullable = false)
     private OffsetDateTime createdAt;
 
     public TrainingSession() {
-        this.createdAt = OffsetDateTime.now();
-    }
-
-    public TrainingSession(LocalDate date, String title, String description,
-                           Group group, Long coachId, TrainingSource source,
-                           SessionStatus status, String rawText) {
-        this.date = date;
-        this.title = title;
-        this.description = description;
-        this.group = group;
-        this.coachId = coachId;
-        this.source = source;
-        this.status = status;
-        this.rawText = rawText;
         this.createdAt = OffsetDateTime.now();
     }
 
@@ -89,28 +62,17 @@ public class TrainingSession {
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }
 
-    // Serialize as groupId only, accept full group object on deserialization
     @JsonIgnore
     public Group getGroup() { return group; }
     @JsonProperty("group")
     public void setGroup(Group group) { this.group = group; }
 
-    // Expose groupId for serialization so frontend gets it without lazy-loading Group
     public Long getGroupId() {
         return group != null ? group.getId() : null;
     }
 
     public Long getCoachId() { return coachId; }
     public void setCoachId(Long coachId) { this.coachId = coachId; }
-
-    public TrainingSource getSource() { return source; }
-    public void setSource(TrainingSource source) { this.source = source; }
-
-    public SessionStatus getStatus() { return status; }
-    public void setStatus(SessionStatus status) { this.status = status; }
-
-    public String getRawText() { return rawText; }
-    public void setRawText(String rawText) { this.rawText = rawText; }
 
     public OffsetDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(OffsetDateTime createdAt) { this.createdAt = createdAt; }

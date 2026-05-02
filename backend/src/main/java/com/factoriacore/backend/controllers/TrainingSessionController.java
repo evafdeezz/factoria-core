@@ -60,9 +60,6 @@ public class TrainingSessionController {
         }
 
         existing.setCoachId(incoming.getCoachId());
-        if (incoming.getSource() != null) existing.setSource(incoming.getSource());
-        if (incoming.getStatus() != null) existing.setStatus(incoming.getStatus());
-        existing.setRawText(incoming.getRawText());
 
         return repository.save(existing);
     }

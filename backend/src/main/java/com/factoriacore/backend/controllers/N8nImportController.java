@@ -5,8 +5,6 @@ import com.factoriacore.backend.dto.BatchImportRequest;
 import com.factoriacore.backend.models.Group;
 import com.factoriacore.backend.models.SessionBlock;
 import com.factoriacore.backend.models.TrainingSession;
-import com.factoriacore.backend.models.enums.SessionStatus;
-import com.factoriacore.backend.models.enums.TrainingSource;
 import com.factoriacore.backend.repositories.GroupRepository;
 import com.factoriacore.backend.repositories.SessionBlockRepository;
 import com.factoriacore.backend.repositories.TrainingSessionRepository;
@@ -66,9 +64,6 @@ public class N8nImportController {
                 session.setDescription("Importado desde Telegram vía n8n");
                 session.setGroup(group);
                 session.setCoachId(request.getCoachId());
-                session.setSource(TrainingSource.N8N_IMPORT);
-                session.setStatus(SessionStatus.PLANNED);
-                session.setRawText(request.getRawText());
 
                 TrainingSession saved = sessionRepository.save(session);
                 sessionIds.add(saved.getId());
@@ -111,13 +106,13 @@ public class N8nImportController {
 
     private DayOfWeek parseDayOfWeek(String day) {
         return switch (day.toUpperCase().trim()) {
-            case "LUNES" -> DayOfWeek.MONDAY;
-            case "MARTES" -> DayOfWeek.TUESDAY;
-            case "MIÉRCOLES", "MIERCOLES" -> DayOfWeek.WEDNESDAY;
-            case "JUEVES" -> DayOfWeek.THURSDAY;
-            case "VIERNES" -> DayOfWeek.FRIDAY;
-            case "SÁBADO", "SABADO" -> DayOfWeek.SATURDAY;
-            case "DOMINGO" -> DayOfWeek.SUNDAY;
+            case "LUNES"                    -> DayOfWeek.MONDAY;
+            case "MARTES"                   -> DayOfWeek.TUESDAY;
+            case "MIÉRCOLES", "MIERCOLES"   -> DayOfWeek.WEDNESDAY;
+            case "JUEVES"                   -> DayOfWeek.THURSDAY;
+            case "VIERNES"                  -> DayOfWeek.FRIDAY;
+            case "SÁBADO", "SABADO"         -> DayOfWeek.SATURDAY;
+            case "DOMINGO"                  -> DayOfWeek.SUNDAY;
             default -> throw new IllegalArgumentException("Día no reconocido: " + day);
         };
     }
@@ -136,9 +131,7 @@ public class N8nImportController {
 
     private String buildTitle(String dayOfWeek, int weekNumber, boolean isDescarga) {
         String base = dayOfWeek.substring(0, 1).toUpperCase() + dayOfWeek.substring(1).toLowerCase();
-        if (isDescarga) {
-            return base + " - Semana " + weekNumber + " (Descarga)";
-        }
+        if (isDescarga) return base + " - Semana " + weekNumber + " (Descarga)";
         return base + " - Semana " + weekNumber;
     }
 
