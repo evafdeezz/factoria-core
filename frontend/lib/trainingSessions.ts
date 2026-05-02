@@ -9,9 +9,6 @@ export interface TrainingSessionDto {
   description?: string | null;
   coachId: number;
   groupId: number;
-  source?: string;
-  status?: string;
-  rawText?: string | null;
   createdAt?: string;
 }
 
@@ -26,9 +23,6 @@ interface RawTrainingSession {
     id: number;
     name?: string;
   };
-  source?: string;
-  status?: string;
-  rawText?: string | null;
   createdAt?: string;
 }
 
@@ -41,9 +35,6 @@ function mapTrainingSession(raw: RawTrainingSession): TrainingSessionDto {
     description: raw.description,
     coachId: raw.coachId,
     groupId: raw.group?.id ?? -1,
-    source: raw.source,
-    status: raw.status,
-    rawText: raw.rawText,
     createdAt: raw.createdAt,
   };
 }
@@ -54,10 +45,7 @@ export interface CreateTrainingSessionPayload {
   description?: string;
   coachId: number;
   groupId: number;
-  source?: "MANUAL" | "TELEGRAM_IMPORT" | "N8N_IMPORT";
-  status?: "PLANNED" | "PUBLISHED" | "COMPLETED" | "CANCELLED";
   startTime?: string | null;
-  rawText?: string | null;
 }
 
 export async function getAthleteSessions(
@@ -142,9 +130,6 @@ export async function createTrainingSession(
       description: payload.description ?? null,
       coachId: payload.coachId,
       group: { id: payload.groupId },
-      source: payload.source ?? "MANUAL",
-      status: payload.status ?? "PLANNED",
-      rawText: payload.rawText ?? null,
     }),
   });
 

@@ -17,7 +17,6 @@ const MONTHS_ES = [
 ];
 
 const SESSION_DOT = "bg-sky-400";
-const SESSION_BADGE = "bg-sky-900/60 text-sky-300 border-sky-700/50";
 
 function buildCalendarDays(year: number, month: number): (number | null)[] {
   // Month is 0-indexed
@@ -299,13 +298,6 @@ function AthleteSessionsCalendar() {
                         <span className={`w-2 h-2 rounded-full flex-shrink-0 ${SESSION_DOT}`} />
                         <div>
                           <p className="font-semibold text-slate-50">{session.title}</p>
-                          {session.status && (
-                            <span
-                              className={`inline-block mt-0.5 text-[10px] px-1.5 py-0.5 rounded border ${SESSION_BADGE}`}
-                            >
-                              {session.title}
-                            </span>
-                          )}
                         </div>
                       </div>
                       <Link

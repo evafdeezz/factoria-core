@@ -189,7 +189,6 @@ export default function NewGroupSessionPage() {
         date,
         title: title.trim(),
         description: description.trim() || undefined,
-        status: "PUBLISHED" as CreateTrainingSessionPayload["status"],
         coachId: user.id,
         groupId,
         startTime: startTime || null,

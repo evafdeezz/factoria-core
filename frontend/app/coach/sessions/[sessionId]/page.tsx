@@ -59,7 +59,6 @@ interface SessionHeader {
   date: string;
   startTime: string;
   title: string;
-  status: string;
   description: string;
   groupId: number;
   coachId: number;
@@ -121,7 +120,6 @@ export default function EditSessionPage() {
           date:        sess.date ?? "",
           startTime:   sess.startTime ?? "",
           title:       sess.title ?? "",
-          status:      sess.status ?? "PLANNED",
           description: sess.description ?? "",
           groupId:     sess.group?.id ?? sess.groupId ?? -1,
           coachId:     sess.coachId ?? -1,
@@ -259,7 +257,6 @@ export default function EditSessionPage() {
           startTime:   header.startTime || null,
           title:       header.title.trim(),
           description: header.description.trim() || null,
-          status:      header.status,
           coachId:     header.coachId,
           group:       { id: header.groupId },
         }),
