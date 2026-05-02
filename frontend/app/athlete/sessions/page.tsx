@@ -41,7 +41,7 @@ function buildCalendarDays(year: number, month: number): (number | null)[] {
   return cells;
 }
 
-export default function AthleteSessionsPage() {
+function AthleteSessionsCalendar() {
   const { user } = useCurrentUser();
 
   const [sessions, setSessions] = useState<TrainingSessionDto[]>([]);
@@ -346,5 +346,19 @@ export default function AthleteSessionsPage() {
 
       </div>
     </div>
+  );
+}
+
+import { Suspense } from "react";
+
+export default function AthleteSessionsPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-sky-900 text-slate-100">
+        <p className="text-sm text-slate-300">Cargando...</p>
+      </div>
+    }>
+      <AthleteSessionsCalendar />
+    </Suspense>
   );
 }
