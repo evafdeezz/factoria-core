@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { createTrainingSession, CreateTrainingSessionPayload } from "@/lib/trainingSessions";
+import { getGroup } from "@/lib/groups";
 import { useCurrentUser } from "@/components/CurrentUserProvider";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -81,13 +82,20 @@ export default function NewGroupSessionPage() {
   const router = useRouter();
   const { user } = useCurrentUser();
   const groupId = Number(params.groupId);
+  const [groupName, setGroupName] = useState<string | null>(null);
 
   // Session header state
   const today = new Date().toISOString().split("T")[0];
+
+  // Load group name
+  useEffect(() => {
+    if (!Number.isNaN(groupId)) {
+      getGroup(groupId).then(g => setGroupName(g.name)).catch(() => {});
+    }
+  }, [groupId]);
   const [date, setDate] = useState(today);
   const [startTime, setStartTime] = useState("");
   const [title, setTitle] = useState("");
-  const [status, setStatus] = useState("PLANNED");
   const [description, setDescription] = useState("");
 
   // Blocks state
@@ -181,7 +189,7 @@ export default function NewGroupSessionPage() {
         date,
         title: title.trim(),
         description: description.trim() || undefined,
-        status: status as CreateTrainingSessionPayload["status"],
+        status: "PUBLISHED" as CreateTrainingSessionPayload["status"],
         coachId: user.id,
         groupId,
         startTime: startTime || null,
@@ -239,7 +247,7 @@ export default function NewGroupSessionPage() {
 
         <header>
           <p className="text-[10px] tracking-[0.2em] uppercase text-sky-300">Nueva sesión</p>
-          <h1 className="text-2xl font-semibold text-slate-50">Crear entrenamiento</h1>
+          <h1 className="text-2xl font-semibold text-slate-50">Nueva sesión{groupName ? ` · ${groupName}` : ""}</h1>
           <p className="text-xs text-slate-400 mt-0.5">Define la sesión y añade los bloques de entrenamiento.</p>
         </header>
 
@@ -269,17 +277,6 @@ export default function NewGroupSessionPage() {
               <input type="text" value={title} onChange={(e) => setTitle(e.target.value)}
                 placeholder="Ej: Viernes – Semana 4 (Velocidad)"
                 className="w-full border border-slate-700 rounded-lg bg-slate-950/40 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none focus:border-sky-500/60" />
-            </div>
-
-            <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1">Estado</label>
-              <select value={status} onChange={(e) => setStatus(e.target.value)}
-                className="w-full border border-slate-700 rounded-lg bg-slate-950/40 px-3 py-2 text-sm text-slate-100">
-                <option value="PLANNED">Planificada</option>
-                <option value="PUBLISHED">Publicada</option>
-                <option value="COMPLETED">Completada</option>
-                <option value="CANCELLED">Cancelada</option>
-              </select>
             </div>
 
             <div>

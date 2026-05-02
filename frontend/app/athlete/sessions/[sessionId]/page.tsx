@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useEffect, useState, Suspense } from "react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useCurrentUser } from "@/components/CurrentUserProvider";
 import { getBlocksBySession, SessionBlockDto } from "@/lib/sessionBlocks";
+import { getSessionVideos, SessionVideoDto } from "@/lib/sessionVideos";
 
 const BLOCK_TYPE_LABELS: Record<string, string> = {
   WARMUP: "Calentamiento",
@@ -39,13 +40,21 @@ const BLOCK_TYPE_COLORS: Record<string, string> = {
   OTHER: "border-slate-500/40 bg-slate-500/5",
 };
 
-export default function SessionDetailPage() {
+function SessionDetailInner() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user } = useCurrentUser();
   const sessionId = Number(params.sessionId);
 
+  const returnYear  = searchParams.get("returnYear");
+  const returnMonth = searchParams.get("returnMonth");
+  const backHref = returnYear && returnMonth
+    ? `/athlete/sessions?year=${returnYear}&month=${returnMonth}`
+    : "/athlete/sessions";
+
   const [blocks, setBlocks] = useState<SessionBlockDto[]>([]);
+  const [videos, setVideos] = useState<SessionVideoDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -55,8 +64,12 @@ export default function SessionDetailPage() {
     async function load() {
       try {
         setLoading(true);
-        const data = await getBlocksBySession(sessionId);
+        const [data, vids] = await Promise.all([
+          getBlocksBySession(sessionId),
+          user?.athleteProfileId ? getSessionVideos(sessionId, user.athleteProfileId) : Promise.resolve([]),
+        ]);
         setBlocks(data);
+        setVideos(vids);
       } catch (err) {
         console.error(err);
         setError("No se han podido cargar los bloques de la sesión.");
@@ -101,12 +114,12 @@ export default function SessionDetailPage() {
             >
               Registrar resultado
             </Link>
-            <button
-              onClick={() => router.back()}
+            <Link
+              href={backHref}
               className="text-xs text-slate-300 hover:text-slate-100 underline"
             >
-              ← Volver
-            </button>
+              ← Volver al calendario
+            </Link>
           </div>
         </div>
 
@@ -120,6 +133,28 @@ export default function SessionDetailPage() {
           <p className="text-sm text-slate-300">
             Esta sesión no tiene bloques de entrenamiento.
           </p>
+        )}
+
+        {/* Vídeos */}
+        {videos.length > 0 && (
+          <div className="space-y-3">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Vídeos</p>
+            {videos.map((v) => (
+              <div key={v.id} className="space-y-1.5">
+                <video
+                  src={v.url}
+                  controls
+                  className="w-full rounded-xl border border-slate-700 bg-black"
+                />
+                {(v.type || v.notes) && (
+                  <div className="flex gap-2 text-[11px] text-slate-400">
+                    {v.type  && <span className="bg-slate-800 px-1.5 py-0.5 rounded">{v.type}</span>}
+                    {v.notes && <span className="italic">{v.notes}</span>}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
         )}
 
         <div className="space-y-3">
@@ -161,5 +196,17 @@ export default function SessionDetailPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function SessionDetailPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-sky-900 text-slate-100">
+        <p className="text-sm text-slate-300">Cargando...</p>
+      </div>
+    }>
+      <SessionDetailInner />
+    </Suspense>
   );
 }

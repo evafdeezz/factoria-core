@@ -391,18 +391,6 @@ export default function EditSessionPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1">Estado</label>
-              <select value={header.status}
-                onChange={(e) => setHeader({ ...header, status: e.target.value })}
-                className="w-full border border-slate-700 rounded-lg bg-slate-950/40 px-3 py-2 text-sm text-slate-100">
-                <option value="PLANNED">Planificada</option>
-                <option value="PUBLISHED">Publicada</option>
-                <option value="COMPLETED">Completada</option>
-                <option value="CANCELLED">Cancelada</option>
-              </select>
-            </div>
-
-            <div>
               <label className="block text-xs font-medium text-slate-300 mb-1">Descripción general</label>
               <textarea value={header.description}
                 onChange={(e) => setHeader({ ...header, description: e.target.value })}

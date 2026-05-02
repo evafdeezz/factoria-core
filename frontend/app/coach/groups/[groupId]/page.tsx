@@ -14,12 +14,7 @@ const MONTHS_ES = [
   "Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre",
 ];
 
-const STATUS_STYLES: Record<string, { dot: string; badge: string; label: string }> = {
-  PLANNED:   { dot: "bg-sky-400",     badge: "bg-sky-900/50 text-sky-300 border-sky-700/40",     label: "Planificada" },
-  PUBLISHED: { dot: "bg-indigo-400",  badge: "bg-indigo-900/50 text-indigo-300 border-indigo-700/40", label: "Publicada" },
-  COMPLETED: { dot: "bg-emerald-400", badge: "bg-emerald-900/50 text-emerald-300 border-emerald-700/40", label: "Completada" },
-  CANCELLED: { dot: "bg-red-400",     badge: "bg-red-900/50 text-red-300 border-red-700/40",     label: "Cancelada" },
-};
+const SESSION_DOT = "bg-sky-400";
 
 export default function GroupDashboardPage() {
   const params = useParams();
@@ -169,16 +164,12 @@ export default function GroupDashboardPage() {
             <h2 className="text-sm font-semibold text-slate-50">📅 Hoy</h2>
             <div className="space-y-2">
               {sessionsToday.map((s) => {
-                const style = STATUS_STYLES[s.status ?? ""] ?? STATUS_STYLES["PLANNED"];
                 return (
                   <div key={s.id} className="border border-slate-800 rounded-xl px-3 py-2 text-xs bg-slate-950/40 flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <span className={`w-2 h-2 rounded-full flex-shrink-0 ${style.dot}`} />
+                      <span className={`w-2 h-2 rounded-full flex-shrink-0 ${SESSION_DOT}`} />
                       <div>
                         <p className="font-semibold text-slate-50">{s.title}</p>
-                        <span className={`inline-block mt-0.5 text-[10px] px-1.5 py-0.5 rounded border ${style.badge}`}>
-                          {style.label}
-                        </span>
                       </div>
                     </div>
                     <button onClick={() => handleDeleteSession(s.id)} disabled={deletingId === s.id}
@@ -227,22 +218,23 @@ export default function GroupDashboardPage() {
                       </p>
                       <div className="space-y-1.5">
                         {sessions.map((s) => {
-                          const style = STATUS_STYLES[s.status ?? ""] ?? STATUS_STYLES["PLANNED"];
                           const [, , dd] = s.date.split("-");
                           return (
                             <div key={s.id}
                               className="flex items-center justify-between border border-slate-800 rounded-xl px-3 py-2 text-xs bg-slate-950/40 hover:border-slate-700 transition-colors">
                               <div className="flex items-center gap-2.5">
                                 <span className="text-slate-500 w-6 text-right flex-shrink-0">{dd}</span>
-                                <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${style.dot}`} />
+                                <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${SESSION_DOT}`} />
                                 <div>
                                   <p className="font-semibold text-slate-100">{s.title}</p>
-                                  <span className={`inline-block text-[10px] px-1.5 py-0.5 rounded border ${style.badge}`}>
-                                    {style.label}
-                                  </span>
                                 </div>
                               </div>
                               <div className="flex items-center gap-3 ml-3 flex-shrink-0">
+                                <button type="button"
+                                  onClick={() => router.push(`/coach/sessions/${s.id}/preview`)}
+                                  className="text-[10px] text-slate-400 hover:text-slate-200">
+                                  Ver
+                                </button>
                                 <button type="button"
                                   onClick={() => router.push(`/coach/sessions/${s.id}`)}
                                   className="text-[10px] text-sky-400 hover:text-sky-300">

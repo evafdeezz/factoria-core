@@ -5,6 +5,9 @@ import { useParams, useRouter } from "next/navigation";
 import { getBlocksBySession, SessionBlockDto } from "@/lib/sessionBlocks";
 import { getSessionResult, saveSessionResult } from "@/lib/sessionResults";
 import { useCurrentUser } from "@/components/CurrentUserProvider";
+import {
+  getSessionVideos, saveSessionVideo, deleteSessionVideo, SessionVideoDto,
+} from "@/lib/sessionVideos";
 
 // ─── Block type classification ───────────────────────────────────────────────
 
@@ -257,9 +260,17 @@ export default function SessionResultPage() {
   const [painNotes, setPainNotes] = useState("");
 
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [saving,  setSaving]  = useState(false);
+  const [error,   setError]   = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+
+  // Video state
+  const [videos,     setVideos]     = useState<SessionVideoDto[]>([]);
+  const [videoUrl,   setVideoUrl]   = useState("");
+  const [videoType,  setVideoType]  = useState("");
+  const [videoNotes, setVideoNotes] = useState("");
+  const [videoError, setVideoError] = useState<string | null>(null);
+  const [savingVideo,setSavingVideo] = useState(false);
 
   const athleteId = user?.athleteProfileId;
 
@@ -269,10 +280,12 @@ export default function SessionResultPage() {
     async function load() {
       try {
         setLoading(true);
-        const [loadedBlocks, existing] = await Promise.all([
+        const [loadedBlocks, existing, existingVideos] = await Promise.all([
           getBlocksBySession(sessionId),
           getSessionResult(athleteId!, sessionId),
+          getSessionVideos(sessionId, athleteId!),
         ]);
+        setVideos(existingVideos);
 
         // Only show blocks that require a result
         const relevant = loadedBlocks.filter(
@@ -303,6 +316,39 @@ export default function SessionResultPage() {
 
   const updateBlock = (id: number, result: BlockResult) => {
     setBlockResults((prev) => ({ ...prev, [id]: result }));
+  };
+
+  const handleAddVideo = async () => {
+    if (!videoUrl.trim() || !user?.athleteProfileId) return;
+    setVideoError(null);
+    setSavingVideo(true);
+    try {
+      const saved = await saveSessionVideo({
+        sessionId,
+        athleteId: user.athleteProfileId,
+        url:   videoUrl.trim(),
+        type:  videoType  || null,
+        notes: videoNotes || null,
+      });
+      setVideos(prev => [...prev, saved]);
+      setVideoUrl("");
+      setVideoType("");
+      setVideoNotes("");
+    } catch {
+      setVideoError("No se pudo guardar el enlace.");
+    } finally {
+      setSavingVideo(false);
+    }
+  };
+
+  const handleDeleteVideo = async (id?: number) => {
+    if (!id) return;
+    try {
+      await deleteSessionVideo(id);
+      setVideos(prev => prev.filter(v => v.id !== id));
+    } catch {
+      setVideoError("No se pudo eliminar el enlace.");
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
