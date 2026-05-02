@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   getAthleteSessions,
   TrainingSessionDto,
@@ -47,9 +48,15 @@ export default function AthleteSessionsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const today = new Date();
-  const [viewYear, setViewYear] = useState(today.getFullYear());
-  const [viewMonth, setViewMonth] = useState(today.getMonth()); // 0-indexed
+
+  const initYear  = parseInt(searchParams.get("year")  ?? "") || today.getFullYear();
+  const initMonth = parseInt(searchParams.get("month") ?? "") || today.getMonth();
+
+  const [viewYear,  setViewYear]  = useState(initYear);
+  const [viewMonth, setViewMonth] = useState(initMonth);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
   const athleteId = user?.athleteProfileId;
@@ -84,14 +91,20 @@ export default function AthleteSessionsPage() {
   const calendarDays = buildCalendarDays(viewYear, viewMonth);
 
   function prevMonth() {
-    if (viewMonth === 0) { setViewMonth(11); setViewYear(y => y - 1); }
-    else setViewMonth(m => m - 1);
+    const newMonth = viewMonth === 0 ? 11 : viewMonth - 1;
+    const newYear  = viewMonth === 0 ? viewYear - 1 : viewYear;
+    setViewMonth(newMonth);
+    setViewYear(newYear);
     setSelectedDate(null);
+    router.replace(`?year=${newYear}&month=${newMonth}`, { scroll: false });
   }
   function nextMonth() {
-    if (viewMonth === 11) { setViewMonth(0); setViewYear(y => y + 1); }
-    else setViewMonth(m => m + 1);
+    const newMonth = viewMonth === 11 ? 0 : viewMonth + 1;
+    const newYear  = viewMonth === 11 ? viewYear + 1 : viewYear;
+    setViewMonth(newMonth);
+    setViewYear(newYear);
     setSelectedDate(null);
+    router.replace(`?year=${newYear}&month=${newMonth}`, { scroll: false });
   }
 
   function dateKey(day: number) {
@@ -313,7 +326,7 @@ export default function AthleteSessionsPage() {
                         </div>
                       </div>
                       <Link
-                        href={`/athlete/sessions/${session.id}`}
+                        href={`/athlete/sessions/${session.id}?returnYear=${viewYear}&returnMonth=${viewMonth}`}
                         className="text-[11px] font-medium text-sky-300 hover:text-sky-200 ml-3 flex-shrink-0"
                       >
                         Ver →
