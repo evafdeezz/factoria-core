@@ -1,57 +1,69 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { getGroup, GroupDto, deleteGroup } from "@/lib/groups";
 import { getGroupMembersDetailed, GroupMemberDetailDto } from "@/lib/groupMembers";
-import { getGroupTodaySessions, TrainingSessionDto } from "@/lib/trainingSessions";
+import { TrainingSessionDto } from "@/lib/trainingSessions";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL || "https://factoriacore.duckdns.org/api";
 
-const MONTHS_ES = [
-  "Enero","Febrero","Marzo","Abril","Mayo","Junio",
-  "Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre",
-];
+const DAYS_ES   = ["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"];
+const MONTHS_ES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio",
+                   "Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+
+function buildCalendarDays(year: number, month: number): (number | null)[] {
+  const startOffset = (new Date(year, month, 1).getDay() + 6) % 7;
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const cells: (number | null)[] = Array(startOffset).fill(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+  while (cells.length % 7 !== 0) cells.push(null);
+  return cells;
+}
+
+function dateKey(year: number, month: number, day: number) {
+  return `${year}-${String(month + 1).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
+}
 
 const SESSION_DOT = "bg-sky-400";
 
 export default function GroupDashboardPage() {
-  const params = useParams();
-  const router = useRouter();
+  const params  = useParams();
+  const router  = useRouter();
   const groupId = Number(params.groupId);
 
-  const [group, setGroup] = useState<GroupDto | null>(null);
-  const [members, setMembers] = useState<GroupMemberDetailDto[]>([]);
-  const [sessionsToday, setSessionsToday] = useState<TrainingSessionDto[]>([]);
+  const [group,       setGroup]       = useState<GroupDto | null>(null);
+  const [members,     setMembers]     = useState<GroupMemberDetailDto[]>([]);
   const [allSessions, setAllSessions] = useState<TrainingSessionDto[]>([]);
-  const [deletingId, setDeletingId] = useState<number | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [deletingId,  setDeletingId]  = useState<number | null>(null);
+  const [loading,     setLoading]     = useState(true);
+  const [error,       setError]       = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [deleting, setDeleting] = useState(false);
+  const [deleting,    setDeleting]    = useState(false);
+
+  const today = new Date();
+  const [viewYear,     setViewYear]     = useState(today.getFullYear());
+  const [viewMonth,    setViewMonth]    = useState(today.getMonth());
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
   useEffect(() => {
     if (Number.isNaN(groupId)) return;
-
     async function load() {
       try {
         setLoading(true);
         setError(null);
-        const [g, mem, sess, allRes] = await Promise.all([
+        const [g, mem, allRes] = await Promise.all([
           getGroup(groupId),
           getGroupMembersDetailed(groupId),
-          getGroupTodaySessions(groupId),
           fetch(`${API_BASE_URL}/sessions/group/${groupId}`, { cache: "no-store", credentials: "include" })
-            .then((r) => r.ok ? r.json() : []),
+            .then(r => r.ok ? r.json() : []),
         ]);
         setGroup(g);
         setMembers(mem);
-        setSessionsToday(sess);
-        const sorted = [...(allRes as TrainingSessionDto[])].sort(
+        setAllSessions([...(allRes as TrainingSessionDto[])].sort(
           (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-        );
-        setAllSessions(sorted);
+        ));
       } catch (err) {
         console.error(err);
         setError("No se ha podido cargar el grupo.");
@@ -59,17 +71,39 @@ export default function GroupDashboardPage() {
         setLoading(false);
       }
     }
-
     void load();
   }, [groupId]);
 
-  const handleDelete = async () => {
+  const sessionsByDate = useMemo(() => {
+    const map: Record<string, TrainingSessionDto[]> = {};
+    for (const s of allSessions) {
+      if (!map[s.date]) map[s.date] = [];
+      map[s.date].push(s);
+    }
+    return map;
+  }, [allSessions]);
+
+  const calendarDays     = buildCalendarDays(viewYear, viewMonth);
+  const selectedSessions = selectedDate ? (sessionsByDate[selectedDate] ?? []) : [];
+  const todayKey         = dateKey(today.getFullYear(), today.getMonth(), today.getDate());
+
+  function prevMonth() {
+    if (viewMonth === 0) { setViewMonth(11); setViewYear(y => y - 1); }
+    else setViewMonth(m => m - 1);
+    setSelectedDate(null);
+  }
+  function nextMonth() {
+    if (viewMonth === 11) { setViewMonth(0); setViewYear(y => y + 1); }
+    else setViewMonth(m => m + 1);
+    setSelectedDate(null);
+  }
+
+  const handleDeleteGroup = async () => {
     try {
       setDeleting(true);
       await deleteGroup(groupId);
       router.push("/coach");
-    } catch (err) {
-      console.error(err);
+    } catch {
       setError("No se ha podido eliminar el grupo.");
       setDeleting(false);
       setShowDeleteConfirm(false);
@@ -81,12 +115,10 @@ export default function GroupDashboardPage() {
     try {
       setDeletingId(sessionId);
       const res = await fetch(`${API_BASE_URL}/sessions/${sessionId}`, {
-        method: "DELETE",
-        credentials: "include",
+        method: "DELETE", credentials: "include",
       });
       if (!res.ok) throw new Error();
-      setAllSessions((prev) => prev.filter((s) => s.id !== sessionId));
-      setSessionsToday((prev) => prev.filter((s) => s.id !== sessionId));
+      setAllSessions(prev => prev.filter(s => s.id !== sessionId));
     } catch {
       setError("No se ha podido eliminar la sesión.");
     } finally {
@@ -104,10 +136,7 @@ export default function GroupDashboardPage() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-sky-900 text-slate-100">
       <div className="space-y-2 text-center">
         <p className="text-sm text-slate-200">Grupo no encontrado.</p>
-        <button onClick={() => router.push("/coach")}
-          className="text-xs text-sky-300 hover:text-sky-200 underline">
-          Volver al panel
-        </button>
+        <button onClick={() => router.push("/coach")} className="text-xs text-sky-300 underline">Volver</button>
       </div>
     </div>
   );
@@ -126,13 +155,15 @@ export default function GroupDashboardPage() {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => router.push(`/coach/groups/${groupId}/edit`)}
+            <button onClick={() => router.push(`/coach/groups/${groupId}/new-session`)}
+              className="text-xs bg-sky-600 text-white px-4 py-2 rounded-full hover:bg-sky-700 font-semibold">
+              + Nueva sesión
+            </button>
+            <button onClick={() => router.push(`/coach/groups/${groupId}/edit`)}
               className="text-xs text-sky-300 hover:text-sky-200 underline">
               Editar
             </button>
-            <button
-              onClick={() => setShowDeleteConfirm(true)}
+            <button onClick={() => setShowDeleteConfirm(true)}
               className="text-xs text-red-400 hover:text-red-300 underline">
               Eliminar
             </button>
@@ -143,7 +174,7 @@ export default function GroupDashboardPage() {
           </div>
         </div>
 
-        {/* Código de invitación */}
+        {/* Join code */}
         {group.joinCode && (
           <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-3 flex items-center justify-between">
             <div>
@@ -158,158 +189,172 @@ export default function GroupDashboardPage() {
           <p className="text-xs text-red-300 bg-red-900/40 border border-red-700 rounded-lg px-3 py-2">{error}</p>
         )}
 
-        {/* Sesiones de hoy */}
-        {sessionsToday.length > 0 && (
-          <div className="bg-emerald-900/20 border border-emerald-700/40 rounded-2xl p-4 space-y-2">
-            <h2 className="text-sm font-semibold text-slate-50">📅 Hoy</h2>
-            <div className="space-y-2">
-              {sessionsToday.map((s) => {
-                return (
-                  <div key={s.id} className="border border-slate-800 rounded-xl px-3 py-2 text-xs bg-slate-950/40 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className={`w-2 h-2 rounded-full flex-shrink-0 ${SESSION_DOT}`} />
-                      <div>
-                        <p className="font-semibold text-slate-50">{s.title}</p>
-                      </div>
-                    </div>
-                    <button onClick={() => handleDeleteSession(s.id)} disabled={deletingId === s.id}
-                      className="text-[10px] text-red-400 hover:text-red-300 disabled:opacity-40 ml-2">
-                      {deletingId === s.id ? "..." : "Eliminar"}
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
 
-        {/* Historial de sesiones */}
-        <div className="bg-slate-900/60 border border-slate-800 rounded-2xl shadow-xl p-4 space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-slate-50">
-              Historial de sesiones ({allSessions.length})
-            </h2>
-            <button
-              onClick={() => router.push(`/coach/groups/${groupId}/new-session`)}
-              className="text-xs bg-sky-600 text-white px-3 py-1.5 rounded-full hover:bg-sky-700 font-semibold">
-              + Nueva sesión
-            </button>
-          </div>
+          {/* ── Calendario (2/3) ──────────────────────────────────────── */}
+          <div className="lg:col-span-2 space-y-4">
 
-          {allSessions.length === 0 ? (
-            <p className="text-xs text-slate-400">No hay sesiones creadas para este grupo.</p>
-          ) : (() => {
-            // Group by month
-            const byMonth: Record<string, TrainingSessionDto[]> = {};
-            for (const s of allSessions) {
-              const [y, m] = s.date.split("-");
-              const key = `${y}-${m}`;
-              if (!byMonth[key]) byMonth[key] = [];
-              byMonth[key].push(s);
-            }
-            return (
-              <div className="space-y-4">
-                {Object.entries(byMonth).map(([key, sessions]) => {
-                  const [y, m] = key.split("-");
+            <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <button onClick={prevMonth}
+                  className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-slate-700/60 text-slate-300 text-lg">‹</button>
+                <p className="text-sm font-semibold">{MONTHS_ES[viewMonth]} {viewYear}</p>
+                <button onClick={nextMonth}
+                  className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-slate-700/60 text-slate-300 text-lg">›</button>
+              </div>
+
+              <div className="grid grid-cols-7">
+                {DAYS_ES.map(d => (
+                  <div key={d} className="text-center text-[10px] font-semibold text-slate-500 uppercase tracking-wider py-1">{d}</div>
+                ))}
+              </div>
+
+              <div className="grid grid-cols-7 gap-y-1">
+                {calendarDays.map((day, idx) => {
+                  if (!day) return <div key={`e-${idx}`} />;
+                  const key         = dateKey(viewYear, viewMonth, day);
+                  const daySessions = sessionsByDate[key] ?? [];
+                  const hasSession  = daySessions.length > 0;
+                  const isSelected  = selectedDate === key;
+                  const isToday     = key === todayKey;
+
                   return (
-                    <div key={key}>
-                      <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 mb-2">
-                        {MONTHS_ES[parseInt(m) - 1]} {y}
-                      </p>
-                      <div className="space-y-1.5">
-                        {sessions.map((s) => {
-                          const [, , dd] = s.date.split("-");
-                          return (
-                            <div key={s.id}
-                              className="flex items-center justify-between border border-slate-800 rounded-xl px-3 py-2 text-xs bg-slate-950/40 hover:border-slate-700 transition-colors">
-                              <div className="flex items-center gap-2.5">
-                                <span className="text-slate-500 w-6 text-right flex-shrink-0">{dd}</span>
-                                <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${SESSION_DOT}`} />
-                                <div>
-                                  <p className="font-semibold text-slate-100">{s.title}</p>
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-3 ml-3 flex-shrink-0">
-                                <button type="button"
-                                  onClick={() => router.push(`/coach/sessions/${s.id}/preview`)}
-                                  className="text-[10px] text-slate-400 hover:text-slate-200">
-                                  Ver
-                                </button>
-                                <button type="button"
-                                  onClick={() => router.push(`/coach/sessions/${s.id}`)}
-                                  className="text-[10px] text-sky-400 hover:text-sky-300">
-                                  Editar
-                                </button>
-                                <button onClick={() => handleDeleteSession(s.id)} disabled={deletingId === s.id}
-                                  className="text-[10px] text-red-400 hover:text-red-300 disabled:opacity-40">
-                                  {deletingId === s.id ? "..." : "Eliminar"}
-                                </button>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
+                    <button key={key}
+                      onClick={() => hasSession ? setSelectedDate(isSelected ? null : key) : undefined}
+                      className={[
+                        "flex flex-col items-center justify-start pt-1 pb-1 rounded-xl mx-0.5 min-h-[3rem] transition-all",
+                        isSelected ? "bg-sky-600/25 border border-sky-500/50" : "border border-transparent",
+                        hasSession && !isSelected ? "hover:bg-slate-700/40 cursor-pointer" : "",
+                        !hasSession ? "opacity-40 cursor-default" : "",
+                      ].join(" ")}
+                    >
+                      <span className={[
+                        "text-xs font-medium w-6 h-6 flex items-center justify-center rounded-full",
+                        isToday ? "bg-sky-500 text-white font-bold"
+                          : isSelected ? "text-sky-300"
+                          : hasSession ? "text-slate-100"
+                          : "text-slate-500",
+                      ].join(" ")}>{day}</span>
+                      {hasSession && (
+                        <div className="flex gap-0.5 mt-0.5 justify-center">
+                          {daySessions.slice(0, 3).map((_, i) => (
+                            <span key={i} className={`w-1.5 h-1.5 rounded-full ${SESSION_DOT}`} />
+                          ))}
+                          {daySessions.length > 3 && (
+                            <span className="text-[8px] text-slate-400">+{daySessions.length - 3}</span>
+                          )}
+                        </div>
+                      )}
+                    </button>
                   );
                 })}
               </div>
-            );
-          })()}
-        </div>
-
-        {/* Miembros */}
-        <div className="bg-slate-900/60 border border-slate-800 rounded-2xl shadow-xl p-4 space-y-2">
-          <h2 className="text-sm font-semibold text-slate-50">
-            Miembros del grupo ({members.length})
-          </h2>
-          {members.length === 0 ? (
-            <p className="text-xs text-slate-400">No hay atletas asignados a este grupo.</p>
-          ) : (
-            <div className="space-y-1 text-xs">
-              {members.map((m) => (
-                <a
-                  href={`/coach/athletes/${m.athleteUserId}`}
-                  key={m.id}
-                  className="flex items-center justify-between border border-slate-800 rounded-xl px-3 py-2 bg-slate-950/40 hover:border-sky-500 transition"
-                >
-                  <div>
-                    <p className="font-semibold text-slate-50">{m.athleteName}</p>
-                    {m.joinedAt && (
-                      <p className="text-[11px] text-slate-400">Desde: {m.joinedAt.slice(0, 10)}</p>
-                    )}
-                  </div>
-                  <span className="text-[10px] px-2 py-1 rounded-full bg-slate-800 text-slate-200">
-                    {m.active ? "Activo" : "Inactivo"}
-                  </span>
-                </a>
-              ))}
             </div>
-          )}
-        </div>
 
+            {/* Selected day panel */}
+            {selectedDate && (
+              <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-semibold text-slate-300">
+                    {(() => {
+                      const [y, m, d] = selectedDate.split("-").map(Number);
+                      return `${d} de ${MONTHS_ES[m - 1]} de ${y}`;
+                    })()}
+                  </h3>
+                  {selectedDate === todayKey && (
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-sky-900/40 border border-sky-700/40 text-sky-300">Hoy</span>
+                  )}
+                </div>
+
+                {selectedSessions.length === 0 ? (
+                  <p className="text-xs text-slate-500">Sin sesiones.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {selectedSessions.map(s => (
+                      <div key={s.id}
+                        className="flex items-center justify-between border border-slate-800 rounded-xl px-3 py-2.5 bg-slate-950/40 text-xs">
+                        <div className="flex items-center gap-2">
+                          <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${SESSION_DOT}`} />
+                          <p className="font-semibold text-slate-100">{s.title}</p>
+                        </div>
+                        <div className="flex items-center gap-3 flex-shrink-0">
+                          <button onClick={() => router.push(`/coach/sessions/${s.id}/preview`)}
+                            className="text-[10px] text-slate-400 hover:text-slate-200">Ver</button>
+                          <button onClick={() => router.push(`/coach/sessions/${s.id}`)}
+                            className="text-[10px] text-sky-400 hover:text-sky-300">Editar</button>
+                          <button onClick={() => handleDeleteSession(s.id)} disabled={deletingId === s.id}
+                            className="text-[10px] text-red-400 hover:text-red-300 disabled:opacity-40">
+                            {deletingId === s.id ? "..." : "Eliminar"}
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* ── Columna derecha (1/3) ─────────────────────────────────── */}
+          <div className="space-y-5">
+
+            {/* Stats */}
+            <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 space-y-3">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Resumen</p>
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { label: "Sesiones", value: allSessions.length },
+                  { label: "Atletas",  value: members.length },
+                ].map(stat => (
+                  <div key={stat.label} className="bg-slate-950/40 rounded-xl p-3 text-center">
+                    <p className="text-xl font-bold text-slate-50">{stat.value}</p>
+                    <p className="text-[10px] text-slate-400 mt-0.5">{stat.label}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Members */}
+            <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 space-y-2">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                Miembros ({members.length})
+              </p>
+              {members.length === 0 ? (
+                <p className="text-xs text-slate-400">Sin atletas todavía.</p>
+              ) : (
+                <div className="space-y-1">
+                  {members.map(m => (
+                    <a key={m.id} href={`/coach/athletes/${m.athleteUserId}`}
+                      className="flex items-center justify-between border border-slate-800 rounded-xl px-3 py-2 bg-slate-950/40 hover:border-sky-500/50 transition text-xs">
+                      <p className="font-semibold text-slate-50">{m.athleteName}</p>
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full ${m.active ? "bg-emerald-900/40 text-emerald-300" : "bg-slate-800 text-slate-400"}`}>
+                        {m.active ? "Activo" : "Inactivo"}
+                      </span>
+                    </a>
+                  ))}
+                </div>
+              )}
+            </div>
+
+          </div>
+        </div>
       </div>
 
-      {/* Modal de confirmación de eliminación */}
+      {/* Delete group modal */}
       {showDeleteConfirm && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
           <div className="bg-slate-900 border border-slate-700 rounded-2xl p-5 max-w-sm mx-4 space-y-3">
             <p className="text-sm font-semibold text-slate-50">¿Eliminar este grupo?</p>
             <p className="text-xs text-slate-400">
-              Se eliminará &quot;{group.name}&quot; permanentemente. Los atletas perderán acceso a las sesiones de este grupo.
+              Se eliminará &quot;{group.name}&quot; permanentemente. Los atletas perderán acceso a las sesiones.
             </p>
             <div className="flex gap-2 justify-end">
-              <button
-                onClick={() => setShowDeleteConfirm(false)}
-                disabled={deleting}
-                className="text-xs px-3 py-1.5 rounded-full border border-slate-700 text-slate-300 hover:bg-slate-800"
-              >
+              <button onClick={() => setShowDeleteConfirm(false)} disabled={deleting}
+                className="text-xs px-3 py-1.5 rounded-full border border-slate-700 text-slate-300 hover:bg-slate-800">
                 Cancelar
               </button>
-              <button
-                onClick={handleDelete}
-                disabled={deleting}
-                className="text-xs px-3 py-1.5 rounded-full bg-red-600 text-white hover:bg-red-700 disabled:opacity-50"
-              >
+              <button onClick={handleDeleteGroup} disabled={deleting}
+                className="text-xs px-3 py-1.5 rounded-full bg-red-600 text-white hover:bg-red-700 disabled:opacity-50">
                 {deleting ? "Eliminando..." : "Sí, eliminar"}
               </button>
             </div>
