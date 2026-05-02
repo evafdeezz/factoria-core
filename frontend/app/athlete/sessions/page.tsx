@@ -16,16 +16,8 @@ const MONTHS_ES = [
   "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
 ];
 
-const STATUS_STYLES: Record<string, { dot: string; badge: string; label: string }> = {
-  PLANNED:   { dot: "bg-sky-400",    badge: "bg-sky-900/60 text-sky-300 border-sky-700/50",    label: "Planificada" },
-  PUBLISHED: { dot: "bg-indigo-400", badge: "bg-indigo-900/60 text-indigo-300 border-indigo-700/50", label: "Publicada" },
-  COMPLETED: { dot: "bg-emerald-400",badge: "bg-emerald-900/60 text-emerald-300 border-emerald-700/50", label: "Completada" },
-  CANCELLED: { dot: "bg-red-400",    badge: "bg-red-900/60 text-red-300 border-red-700/50",    label: "Cancelada" },
-};
-
-function getDotStyle(status?: string) {
-  return STATUS_STYLES[status ?? ""] ?? STATUS_STYLES["PLANNED"];
-}
+const SESSION_DOT = "bg-sky-400";
+const SESSION_BADGE = "bg-sky-900/60 text-sky-300 border-sky-700/50";
 
 function buildCalendarDays(year: number, month: number): (number | null)[] {
   // Month is 0-indexed
@@ -267,7 +259,7 @@ function AthleteSessionsCalendar() {
                       {daySessions.slice(0, 3).map((s, i) => (
                         <span
                           key={i}
-                          className={`w-1.5 h-1.5 rounded-full ${getDotStyle(s.status).dot}`}
+                          className={`w-1.5 h-1.5 rounded-full ${SESSION_DOT}`}
                         />
                       ))}
                       {daySessions.length > 3 && (
@@ -280,15 +272,7 @@ function AthleteSessionsCalendar() {
             })}
           </div>
 
-          {/* Legend */}
-          <div className="mt-4 pt-3 border-t border-slate-800 flex flex-wrap gap-x-4 gap-y-1">
-            {Object.entries(STATUS_STYLES).map(([key, val]) => (
-              <div key={key} className="flex items-center gap-1.5">
-                <span className={`w-2 h-2 rounded-full ${val.dot}`} />
-                <span className="text-[10px] text-slate-400">{val.label}</span>
-              </div>
-            ))}
-          </div>
+
         </div>
 
         {/* Selected day sessions panel */}
@@ -306,21 +290,20 @@ function AthleteSessionsCalendar() {
             ) : (
               <div className="space-y-2">
                 {selectedSessions.map((session) => {
-                  const style = getDotStyle(session.status);
                   return (
                     <div
                       key={session.id}
                       className="flex items-center justify-between rounded-xl bg-slate-950/40 border border-slate-800 px-3 py-2 text-xs"
                     >
                       <div className="flex items-center gap-2">
-                        <span className={`w-2 h-2 rounded-full flex-shrink-0 ${style.dot}`} />
+                        <span className={`w-2 h-2 rounded-full flex-shrink-0 ${SESSION_DOT}`} />
                         <div>
                           <p className="font-semibold text-slate-50">{session.title}</p>
                           {session.status && (
                             <span
-                              className={`inline-block mt-0.5 text-[10px] px-1.5 py-0.5 rounded border ${style.badge}`}
+                              className={`inline-block mt-0.5 text-[10px] px-1.5 py-0.5 rounded border ${SESSION_BADGE}`}
                             >
-                              {STATUS_STYLES[session.status]?.label ?? session.status}
+                              {session.title}
                             </span>
                           )}
                         </div>

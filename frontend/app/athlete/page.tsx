@@ -221,8 +221,7 @@ export default function AthleteHomePage() {
                   className="border border-slate-800 rounded-xl px-3 py-2 flex items-center justify-between text-sm bg-slate-950/40">
                   <div>
                     <p className="font-semibold text-slate-50">{session.title}</p>
-                    <p className="text-[11px] text-slate-400">Estado: {session.status ?? "PLANNED"}</p>
-                  </div>
+                    </div>
                   <Link href={`/athlete/sessions/${session.id}/result`}
                     className="text-[11px] font-semibold text-sky-300 hover:text-sky-200">
                     Registrar resultado →

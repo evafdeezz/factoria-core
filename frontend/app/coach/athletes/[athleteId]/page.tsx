@@ -7,6 +7,7 @@ import { getAthleteProfile } from "@/lib/athleteProfile";
 import { getWellnessHistory, WellnessEntryDto } from "@/lib/wellness";
 import { getResultsByAthlete, SessionResultDto } from "@/lib/sessionResults";
 import { getAthleteSessions, TrainingSessionDto } from "@/lib/trainingSessions";
+import { getBlocksBySession, SessionBlockDto } from "@/lib/sessionBlocks";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL || "https://factoriacore.duckdns.org/api";
@@ -30,16 +31,20 @@ function dateKey(year: number, month: number, day: number) {
   return `${year}-${String(month + 1).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
 }
 
-const STATUS_DOT: Record<string, string> = {
-  PLANNED:   "bg-sky-400",
-  PUBLISHED: "bg-indigo-400",
-  COMPLETED: "bg-emerald-400",
-  CANCELLED: "bg-red-400",
+const SESSION_DOT = "bg-sky-400";
+const RESULT_DOT  = "bg-emerald-400";
+
+const BLOCK_TYPE_LABELS: Record<string, string> = {
+  WARMUP: "Calentamiento", TECHNIQUE: "Técnica", STRENGTH: "Fuerza",
+  PLYOMETRICS: "Pliometría", MAIN_SET: "Series principales",
+  GYM: "Gimnasio", COOLDOWN: "Vuelta a la calma", OTHER: "Otro",
 };
 
-const STATUS_LABEL: Record<string, string> = {
-  PLANNED: "Planificada", PUBLISHED: "Publicada",
-  COMPLETED: "Completada", CANCELLED: "Cancelada",
+const TARGET_LABELS: Record<string, string> = {
+  ALL: "Todos", VELOCISTA: "Velocistas", VELOCISTA_CORTO: "Velocistas corto",
+  VELOCISTA_LARGO: "Velocistas largo", VALLISTA: "Vallistas",
+  VALLISTA_CORTO: "Vallistas corto", VALLISTA_LARGO: "Vallistas largo",
+  SALTADOR: "Saltadores",
 };
 
 const PHASE_STYLES: Record<string, { bg: string; border: string; text: string }> = {
@@ -101,20 +106,21 @@ export default function CoachAthleteDetailPage() {
   const router  = useRouter();
   const userId  = Number(params.athleteId);
 
-  const [athlete,     setAthlete]     = useState<UserDto|null>(null);
-  const [wellness,    setWellness]    = useState<WellnessEntryDto[]>([]);
-  const [results,     setResults]     = useState<SessionResultDto[]>([]);
-  const [sessions,    setSessions]    = useState<TrainingSessionDto[]>([]);
-  const [cycleStatus, setCycleStatus] = useState<any>(null);
+  const [athlete,         setAthlete]         = useState<UserDto|null>(null);
+  const [wellness,        setWellness]        = useState<WellnessEntryDto[]>([]);
+  const [results,         setResults]         = useState<SessionResultDto[]>([]);
+  const [sessions,        setSessions]        = useState<TrainingSessionDto[]>([]);
+  const [cycleStatus,     setCycleStatus]     = useState<any>(null);
+  const [blocksBySession, setBlocksBySession] = useState<Record<number, SessionBlockDto[]>>({});
 
-  const [loading, setLoading] = useState(true);
-  const [error,   setError]   = useState<string|null>(null);
+  const [loading,         setLoading]         = useState(true);
+  const [error,           setError]           = useState<string|null>(null);
+  const [showAllWellness, setShowAllWellness] = useState(false);
 
   const today = new Date();
-  const [viewYear,      setViewYear]      = useState(today.getFullYear());
-  const [viewMonth,     setViewMonth]     = useState(today.getMonth());
-  const [selectedDate,  setSelectedDate]  = useState<string|null>(null);
-  const [showAllWellness, setShowAllWellness] = useState(false);
+  const [viewYear,     setViewYear]     = useState(today.getFullYear());
+  const [viewMonth,    setViewMonth]    = useState(today.getMonth());
+  const [selectedDate, setSelectedDate] = useState<string|null>(null);
 
   useEffect(() => {
     if (Number.isNaN(userId)) return;
@@ -138,12 +144,11 @@ export default function CoachAthleteDetailPage() {
         setResults([...res].sort((a,b) => (b.id??0)-(a.id??0)));
         setSessions(sess);
 
-        // Ciclo menstrual — silencioso si 403 (no compartido) o 204 (desactivado)
         try {
           const cr = await fetch(`${API_BASE_URL}/menstrual/${pid}/status`,
             { credentials:"include", cache:"no-store" });
           if (cr.ok) setCycleStatus(await cr.json());
-        } catch { /* ignorar */ }
+        } catch { /* no compartido o desactivado */ }
 
       } catch (err) {
         console.error(err);
@@ -170,8 +175,20 @@ export default function CoachAthleteDetailPage() {
     return map;
   }, [results]);
 
-  const calendarDays   = buildCalendarDays(viewYear, viewMonth);
-  const selectedSessions = selectedDate ? (sessionsByDate[selectedDate]??[]) : [];
+  useEffect(() => {
+    if (!selectedDate) return;
+    const daySessions = sessionsByDate[selectedDate] ?? [];
+    daySessions.forEach(s => {
+      if (!blocksBySession[s.id]) {
+        getBlocksBySession(s.id)
+          .then(blocks => setBlocksBySession(prev => ({ ...prev, [s.id]: blocks })))
+          .catch(() => {});
+      }
+    });
+  }, [selectedDate, sessionsByDate]);
+
+  const calendarDays     = buildCalendarDays(viewYear, viewMonth);
+  const selectedSessions = selectedDate ? (sessionsByDate[selectedDate] ?? []) : [];
 
   function prevMonth() {
     if (viewMonth===0){setViewMonth(11);setViewYear(y=>y-1);}
@@ -271,7 +288,7 @@ export default function CoachAthleteDetailPage() {
                 {calendarDays.map((day, idx) => {
                   if (!day) return <div key={`e-${idx}`} />;
                   const key         = dateKey(viewYear, viewMonth, day);
-                  const daySessions = sessionsByDate[key]??[];
+                  const daySessions = sessionsByDate[key] ?? [];
                   const hasSession  = daySessions.length > 0;
                   const hasResult   = daySessions.some(s => resultsBySession.has(s.id));
                   const isSelected  = selectedDate === key;
@@ -289,15 +306,19 @@ export default function CoachAthleteDetailPage() {
                     >
                       <span className={[
                         "text-xs font-medium w-6 h-6 flex items-center justify-center rounded-full",
-                        isToday ? "bg-sky-500 text-white font-bold" : isSelected ? "text-sky-300" : hasSession ? "text-slate-100" : "text-slate-500",
+                        isToday ? "bg-sky-500 text-white font-bold"
+                          : isSelected ? "text-sky-300"
+                          : hasSession ? "text-slate-100"
+                          : "text-slate-500",
                       ].join(" ")}>{day}</span>
-                      {daySessions.length > 0 && (
+                      {hasSession && (
                         <div className="flex gap-0.5 mt-0.5 flex-wrap justify-center px-1">
-                          {daySessions.slice(0,3).map((s,i) => (
+                          {daySessions.slice(0,3).map((_,i) => (
                             <span key={i} className={[
                               "rounded-full transition-all",
-                              hasResult ? "w-2 h-2 ring-1 ring-white/30" : "w-1.5 h-1.5",
-                              STATUS_DOT[s.status??"PLANNED"]??STATUS_DOT["PLANNED"],
+                              hasResult
+                                ? `w-2 h-2 ${RESULT_DOT} ring-1 ring-white/20`
+                                : `w-1.5 h-1.5 ${SESSION_DOT}`,
                             ].join(" ")} />
                           ))}
                         </div>
@@ -307,15 +328,14 @@ export default function CoachAthleteDetailPage() {
                 })}
               </div>
 
-              <div className="pt-2 border-t border-slate-800 flex flex-wrap gap-x-4 gap-y-1">
-                {Object.entries(STATUS_DOT).map(([k,dot]) => (
-                  <div key={k} className="flex items-center gap-1.5">
-                    <span className={`w-2 h-2 rounded-full ${dot}`} />
-                    <span className="text-[10px] text-slate-400">{STATUS_LABEL[k]}</span>
-                  </div>
-                ))}
+              {/* Legend */}
+              <div className="pt-2 border-t border-slate-800 flex gap-4">
                 <div className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-slate-400 ring-1 ring-white/30" />
+                  <span className={`w-2 h-2 rounded-full ${SESSION_DOT}`} />
+                  <span className="text-[10px] text-slate-400">Sesión</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className={`w-2 h-2 rounded-full ${RESULT_DOT} ring-1 ring-white/20`} />
                   <span className="text-[10px] text-slate-400">Con resultado</span>
                 </div>
               </div>
@@ -331,43 +351,72 @@ export default function CoachAthleteDetailPage() {
                   <p className="text-xs text-slate-500">Sin sesiones.</p>
                 ) : selectedSessions.map(s => {
                   const result = resultsBySession.get(s.id);
+                  const blocks = blocksBySession[s.id] ?? [];
                   return (
-                    <div key={s.id} className="border border-slate-800 rounded-xl px-3 py-2.5 bg-slate-950/40 space-y-2">
-                      <div className="flex items-start justify-between gap-2">
-                        <div>
-                          <p className="text-xs font-semibold text-slate-50">{s.title}</p>
-                          <div className="flex items-center gap-1.5 mt-0.5">
-                            <span className={`w-1.5 h-1.5 rounded-full ${STATUS_DOT[s.status??"PLANNED"]}`} />
-                            <span className="text-[10px] text-slate-400">{STATUS_LABEL[s.status??"PLANNED"]}</span>
-                          </div>
-                        </div>
-                        {result && (
-                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-900/40 border border-emerald-700/40 text-emerald-300 flex-shrink-0">
-                            ✓ Con resultado
-                          </span>
-                        )}
+                    <div key={s.id} className="border border-slate-800 rounded-xl bg-slate-950/40 overflow-hidden">
+                      {/* Header */}
+                      <div className="flex items-center justify-between px-3 py-2 border-b border-slate-800">
+                        <p className="text-xs font-semibold text-slate-50">{s.title}</p>
+                        {result
+                          ? <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-900/40 border border-emerald-700/40 text-emerald-300">✓ Con resultado</span>
+                          : <span className="text-[10px] text-slate-600">Sin resultado</span>
+                        }
                       </div>
-                      {result && (
-                        <div className="border-t border-slate-800 pt-2 space-y-1.5">
-                          {result.rpe && (
-                            <p className="text-[11px] text-slate-400">
-                              RPE <span className="text-slate-200 font-semibold">{result.rpe}</span>/10
-                            </p>
-                          )}
-                          <ResultBlocks timeMain={result.timeMain} />
-                          {result.comment && (
-                            <p className="text-[11px] text-slate-400 italic">"{result.comment}"</p>
-                          )}
-                          {result.painFlag && (
-                            <p className="text-[11px] text-red-300">
-                              ⚠️ Reportó dolor{result.painNotes ? `: ${result.painNotes}` : ""}
-                            </p>
+                      {/* Planned + Result side by side */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-slate-800">
+                        {/* Blocks */}
+                        <div className="p-3 space-y-2.5">
+                          <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Planificado</p>
+                          {blocks.length === 0 ? (
+                            <p className="text-[11px] text-slate-600 animate-pulse">Cargando...</p>
+                          ) : blocks.map(block => (
+                            <div key={block.id} className="space-y-0.5">
+                              <p className="text-[10px] font-semibold text-sky-400 uppercase tracking-wide">
+                                {BLOCK_TYPE_LABELS[block.blockType] ?? block.blockType}
+                                {block.target !== "ALL" && (
+                                  <span className="ml-1.5 text-slate-500 font-normal normal-case">
+                                    · {TARGET_LABELS[block.target] ?? block.target}
+                                  </span>
+                                )}
+                              </p>
+                              {block.title && (
+                                <p className="text-[11px] font-medium text-slate-200">{block.title}</p>
+                              )}
+                              <p className="text-[11px] text-slate-400 whitespace-pre-line leading-relaxed">
+                                {block.description}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                        {/* Result */}
+                        <div className="p-3 space-y-2">
+                          <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Resultado</p>
+                          {result ? (
+                            <div className="space-y-1.5">
+                              {result.rpe && (
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-[10px] text-slate-500">RPE</span>
+                                  <span className={`text-base font-bold ${result.rpe <= 4 ? "text-emerald-400" : result.rpe <= 7 ? "text-amber-400" : "text-red-400"}`}>
+                                    {result.rpe}
+                                  </span>
+                                  <span className="text-[10px] text-slate-600">/10</span>
+                                </div>
+                              )}
+                              <ResultBlocks timeMain={result.timeMain} />
+                              {result.comment && (
+                                <p className="text-[11px] text-slate-400 italic">"{result.comment}"</p>
+                              )}
+                              {result.painFlag && (
+                                <p className="text-[11px] text-red-300 bg-red-900/20 rounded px-2 py-1">
+                                  ⚠️ {result.painNotes || "Reportó dolor"}
+                                </p>
+                              )}
+                            </div>
+                          ) : (
+                            <p className="text-[11px] text-slate-600">Sin datos.</p>
                           )}
                         </div>
-                      )}
-                      {!result && s.status !== "CANCELLED" && (
-                        <p className="text-[11px] text-slate-500 border-t border-slate-800 pt-2">Sin resultado registrado.</p>
-                      )}
+                      </div>
                     </div>
                   );
                 })}
@@ -383,10 +432,10 @@ export default function CoachAthleteDetailPage() {
               <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Resumen</p>
               <div className="grid grid-cols-2 gap-2">
                 {[
-                  { label: "Sesiones",    value: sessions.length },
-                  { label: "Resultados",  value: results.length },
-                  { label: "% completado",value: sessions.length > 0 ? `${Math.round(results.length/sessions.length*100)}%` : "—" },
-                  { label: "RPE medio",   value: rpeAvg },
+                  { label: "Sesiones",     value: sessions.length },
+                  { label: "Resultados",   value: results.length },
+                  { label: "% completado", value: sessions.length > 0 ? `${Math.round(results.length/sessions.length*100)}%` : "—" },
+                  { label: "RPE medio",    value: rpeAvg },
                 ].map(stat => (
                   <div key={stat.label} className="bg-slate-950/40 rounded-xl p-3 text-center">
                     <p className="text-xl font-bold text-slate-50">{stat.value}</p>
