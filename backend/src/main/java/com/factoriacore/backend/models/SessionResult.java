@@ -22,7 +22,7 @@ public class SessionResult {
     @JoinColumn(name = "athlete_id", nullable = false)
     private AthleteProfile athlete;
 
-    @Column(name = "time_main", length = 100)
+    @Column(name = "time_main", length = 5000)
     private String timeMain;
 
     @Column(name = "rpe")
