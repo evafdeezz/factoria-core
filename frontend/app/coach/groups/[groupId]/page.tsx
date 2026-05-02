@@ -6,6 +6,21 @@ import { getGroup, GroupDto, deleteGroup } from "@/lib/groups";
 import { getGroupMembersDetailed, GroupMemberDetailDto } from "@/lib/groupMembers";
 import { getGroupTodaySessions, TrainingSessionDto } from "@/lib/trainingSessions";
 
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_BASE_URL || "https://factoriacore.duckdns.org/api";
+
+const MONTHS_ES = [
+  "Enero","Febrero","Marzo","Abril","Mayo","Junio",
+  "Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre",
+];
+
+const STATUS_STYLES: Record<string, { dot: string; badge: string; label: string }> = {
+  PLANNED:   { dot: "bg-sky-400",     badge: "bg-sky-900/50 text-sky-300 border-sky-700/40",     label: "Planificada" },
+  PUBLISHED: { dot: "bg-indigo-400",  badge: "bg-indigo-900/50 text-indigo-300 border-indigo-700/40", label: "Publicada" },
+  COMPLETED: { dot: "bg-emerald-400", badge: "bg-emerald-900/50 text-emerald-300 border-emerald-700/40", label: "Completada" },
+  CANCELLED: { dot: "bg-red-400",     badge: "bg-red-900/50 text-red-300 border-red-700/40",     label: "Cancelada" },
+};
+
 export default function GroupDashboardPage() {
   const params = useParams();
   const router = useRouter();
@@ -14,6 +29,8 @@ export default function GroupDashboardPage() {
   const [group, setGroup] = useState<GroupDto | null>(null);
   const [members, setMembers] = useState<GroupMemberDetailDto[]>([]);
   const [sessionsToday, setSessionsToday] = useState<TrainingSessionDto[]>([]);
+  const [allSessions, setAllSessions] = useState<TrainingSessionDto[]>([]);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -26,14 +43,20 @@ export default function GroupDashboardPage() {
       try {
         setLoading(true);
         setError(null);
-        const [g, mem, sess] = await Promise.all([
+        const [g, mem, sess, allRes] = await Promise.all([
           getGroup(groupId),
           getGroupMembersDetailed(groupId),
           getGroupTodaySessions(groupId),
+          fetch(`${API_BASE_URL}/sessions/group/${groupId}`, { cache: "no-store", credentials: "include" })
+            .then((r) => r.ok ? r.json() : []),
         ]);
         setGroup(g);
         setMembers(mem);
         setSessionsToday(sess);
+        const sorted = [...(allRes as TrainingSessionDto[])].sort(
+          (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+        );
+        setAllSessions(sorted);
       } catch (err) {
         console.error(err);
         setError("No se ha podido cargar el grupo.");
@@ -55,6 +78,24 @@ export default function GroupDashboardPage() {
       setError("No se ha podido eliminar el grupo.");
       setDeleting(false);
       setShowDeleteConfirm(false);
+    }
+  };
+
+  const handleDeleteSession = async (sessionId: number) => {
+    if (!confirm("¿Eliminar esta sesión? Esta acción no se puede deshacer.")) return;
+    try {
+      setDeletingId(sessionId);
+      const res = await fetch(`${API_BASE_URL}/sessions/${sessionId}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error();
+      setAllSessions((prev) => prev.filter((s) => s.id !== sessionId));
+      setSessionsToday((prev) => prev.filter((s) => s.id !== sessionId));
+    } catch {
+      setError("No se ha podido eliminar la sesión.");
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -91,11 +132,6 @@ export default function GroupDashboardPage() {
           </div>
           <div className="flex items-center gap-2">
             <button
-              onClick={() => router.push(`/coach/groups/${groupId}/new-session`)}
-              className="text-xs bg-sky-600 text-white px-4 py-2 rounded-full hover:bg-sky-700 shadow-lg font-semibold">
-              + Nueva sesión
-            </button>
-            <button
               onClick={() => router.push(`/coach/groups/${groupId}/edit`)}
               className="text-xs text-sky-300 hover:text-sky-200 underline">
               Editar
@@ -128,20 +164,105 @@ export default function GroupDashboardPage() {
         )}
 
         {/* Sesiones de hoy */}
-        <div className="bg-slate-900/60 border border-slate-800 rounded-2xl shadow-xl p-4 space-y-2">
-          <h2 className="text-sm font-semibold text-slate-50">Sesiones de hoy</h2>
-          {sessionsToday.length === 0 ? (
-            <p className="text-xs text-slate-400">No hay sesiones planificadas hoy para este grupo.</p>
-          ) : (
+        {sessionsToday.length > 0 && (
+          <div className="bg-emerald-900/20 border border-emerald-700/40 rounded-2xl p-4 space-y-2">
+            <h2 className="text-sm font-semibold text-slate-50">📅 Hoy</h2>
             <div className="space-y-2">
-              {sessionsToday.map((s) => (
-                <div key={s.id} className="border border-slate-800 rounded-xl px-3 py-2 text-xs bg-slate-950/40">
-                  <p className="font-semibold text-slate-50">{s.title}</p>
-                  <p className="text-[11px] text-slate-400">Fecha: {s.date} · Estado: {s.status ?? "-"}</p>
-                </div>
-              ))}
+              {sessionsToday.map((s) => {
+                const style = STATUS_STYLES[s.status ?? ""] ?? STATUS_STYLES["PLANNED"];
+                return (
+                  <div key={s.id} className="border border-slate-800 rounded-xl px-3 py-2 text-xs bg-slate-950/40 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className={`w-2 h-2 rounded-full flex-shrink-0 ${style.dot}`} />
+                      <div>
+                        <p className="font-semibold text-slate-50">{s.title}</p>
+                        <span className={`inline-block mt-0.5 text-[10px] px-1.5 py-0.5 rounded border ${style.badge}`}>
+                          {style.label}
+                        </span>
+                      </div>
+                    </div>
+                    <button onClick={() => handleDeleteSession(s.id)} disabled={deletingId === s.id}
+                      className="text-[10px] text-red-400 hover:text-red-300 disabled:opacity-40 ml-2">
+                      {deletingId === s.id ? "..." : "Eliminar"}
+                    </button>
+                  </div>
+                );
+              })}
             </div>
-          )}
+          </div>
+        )}
+
+        {/* Historial de sesiones */}
+        <div className="bg-slate-900/60 border border-slate-800 rounded-2xl shadow-xl p-4 space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-slate-50">
+              Historial de sesiones ({allSessions.length})
+            </h2>
+            <button
+              onClick={() => router.push(`/coach/groups/${groupId}/new-session`)}
+              className="text-xs bg-sky-600 text-white px-3 py-1.5 rounded-full hover:bg-sky-700 font-semibold">
+              + Nueva sesión
+            </button>
+          </div>
+
+          {allSessions.length === 0 ? (
+            <p className="text-xs text-slate-400">No hay sesiones creadas para este grupo.</p>
+          ) : (() => {
+            // Group by month
+            const byMonth: Record<string, TrainingSessionDto[]> = {};
+            for (const s of allSessions) {
+              const [y, m] = s.date.split("-");
+              const key = `${y}-${m}`;
+              if (!byMonth[key]) byMonth[key] = [];
+              byMonth[key].push(s);
+            }
+            return (
+              <div className="space-y-4">
+                {Object.entries(byMonth).map(([key, sessions]) => {
+                  const [y, m] = key.split("-");
+                  return (
+                    <div key={key}>
+                      <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 mb-2">
+                        {MONTHS_ES[parseInt(m) - 1]} {y}
+                      </p>
+                      <div className="space-y-1.5">
+                        {sessions.map((s) => {
+                          const style = STATUS_STYLES[s.status ?? ""] ?? STATUS_STYLES["PLANNED"];
+                          const [, , dd] = s.date.split("-");
+                          return (
+                            <div key={s.id}
+                              className="flex items-center justify-between border border-slate-800 rounded-xl px-3 py-2 text-xs bg-slate-950/40 hover:border-slate-700 transition-colors">
+                              <div className="flex items-center gap-2.5">
+                                <span className="text-slate-500 w-6 text-right flex-shrink-0">{dd}</span>
+                                <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${style.dot}`} />
+                                <div>
+                                  <p className="font-semibold text-slate-100">{s.title}</p>
+                                  <span className={`inline-block text-[10px] px-1.5 py-0.5 rounded border ${style.badge}`}>
+                                    {style.label}
+                                  </span>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-3 ml-3 flex-shrink-0">
+                                <button type="button"
+                                  onClick={() => router.push(`/coach/sessions/${s.id}`)}
+                                  className="text-[10px] text-sky-400 hover:text-sky-300">
+                                  Editar
+                                </button>
+                                <button onClick={() => handleDeleteSession(s.id)} disabled={deletingId === s.id}
+                                  className="text-[10px] text-red-400 hover:text-red-300 disabled:opacity-40">
+                                  {deletingId === s.id ? "..." : "Eliminar"}
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })()}
         </div>
 
         {/* Miembros */}

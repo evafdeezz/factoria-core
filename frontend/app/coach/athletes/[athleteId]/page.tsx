@@ -14,6 +14,86 @@ import {
   TrainingSessionDto,
 } from "@/lib/trainingSessions";
 
+// ─── timeMain parser ─────────────────────────────────────────────────────────
+
+const BLOCK_TYPE_LABELS: Record<string, string> = {
+  WARMUP: "Calentamiento", TECHNIQUE: "Técnica", STRENGTH: "Fuerza",
+  PLYOMETRICS: "Pliometría", MAIN_SET: "Series principales",
+  GYM: "Gimnasio", COOLDOWN: "Vuelta a la calma", OTHER: "Otro",
+};
+
+interface ParsedBlock {
+  blockId: number;
+  mode: "time_series" | "weight_sets" | "notes" | "skip";
+  times?: { value: string }[];
+  sets?: { reps: string; weight: string }[];
+  text?: string;
+}
+
+interface ParsedTimeMain {
+  version: 2;
+  blocks: ParsedBlock[];
+}
+
+function parseTimeMain(raw: string | null | undefined): ParsedBlock[] | null {
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as ParsedTimeMain;
+    if (parsed.version === 2 && Array.isArray(parsed.blocks)) return parsed.blocks;
+  } catch { /* legacy plain text */ }
+  return null;
+}
+
+function ResultBlocks({ timeMain }: { timeMain: string | null | undefined }) {
+  const blocks = parseTimeMain(timeMain);
+
+  // Legacy plain text
+  if (!blocks) {
+    if (!timeMain) return <span className="text-slate-500">—</span>;
+    return <span className="text-slate-200">{timeMain}</span>;
+  }
+
+  const visible = blocks.filter((b) => b.mode !== "skip");
+  if (visible.length === 0) return <span className="text-slate-500">Sin datos</span>;
+
+  return (
+    <div className="space-y-1.5 mt-1">
+      {visible.map((block) => (
+        <div key={block.blockId} className="text-[11px]">
+          {block.mode === "time_series" && block.times && (
+            <div>
+              <span className="text-slate-400">Tiempos: </span>
+              <span className="text-slate-100">
+                {block.times
+                  .filter((t) => t.value)
+                  .map((t, i) => `${i + 1}) ${t.value}`)
+                  .join("  ·  ") || "—"}
+              </span>
+            </div>
+          )}
+          {block.mode === "weight_sets" && block.sets && (
+            <div>
+              <span className="text-slate-400">Series: </span>
+              <span className="text-slate-100">
+                {block.sets
+                  .filter((s) => s.reps || s.weight)
+                  .map((s, i) => `${i + 1}) ${s.reps || "?"}r × ${s.weight || "?"}kg`)
+                  .join("  ·  ") || "—"}
+              </span>
+            </div>
+          )}
+          {block.mode === "notes" && block.text && (
+            <div>
+              <span className="text-slate-400">Notas: </span>
+              <span className="text-slate-200 italic">{block.text}</span>
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function CoachAthleteDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -211,14 +291,14 @@ export default function CoachAthleteDetailPage() {
                           Fecha: {session?.date ?? "-"}
                         </p>
                       </div>
-                      <div className="text-[11px] text-right text-slate-200">
-                        <p>RPE: {r.rpe ?? "-"}</p>
-                        <p>Tiempo: {r.timeMain ?? "-"}</p>
+                      <div className="text-[11px] text-right">
+                        <p className="text-slate-400">RPE: <span className="text-slate-200">{r.rpe ?? "—"}</span></p>
                       </div>
                     </div>
 
+                    <ResultBlocks timeMain={r.timeMain} />
                     {r.comment && (
-                      <p className="text-[11px] text-slate-300">{r.comment}</p>
+                      <p className="text-[11px] text-slate-300 mt-1 italic">{r.comment}</p>
                     )}
                   </div>
                 );

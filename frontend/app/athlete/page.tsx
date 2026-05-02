@@ -6,6 +6,8 @@ import Link from "next/link";
 import { useCurrentUser } from "@/components/CurrentUserProvider";
 import { getWellnessForDate, WellnessEntryDto } from "@/lib/wellness";
 import { getAthleteTodaySessions, TrainingSessionDto } from "@/lib/trainingSessions";
+import { getAthleteGroups } from "@/lib/groupMembers";
+import { getGroup, GroupDto } from "@/lib/groups";
 import CycleBlock from "@/components/CycleBlock";
 
 const API_BASE_URL =
@@ -23,6 +25,7 @@ export default function AthleteHomePage() {
   const [wellness, setWellness] = useState<WellnessEntryDto | null>(null);
   const [sessions, setSessions] = useState<TrainingSessionDto[]>([]);
   const [loading, setLoading] = useState(true);
+  const [group, setGroup] = useState<GroupDto | null>(null);
   const [logoutLoading, setLogoutLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -52,8 +55,18 @@ export default function AthleteHomePage() {
       try { sessionsData = await getAthleteTodaySessions(athleteId!); }
       catch (err) { console.error("Error cargando sesiones de hoy:", err); hasTechnicalError = true; }
 
+      let groupData: GroupDto | null = null;
+      try {
+        const memberships = await getAthleteGroups(athleteId!);
+        const active = memberships.filter((m) => m.active);
+        if (active.length > 0 && active[0].groupId) {
+          groupData = await getGroup(active[0].groupId);
+        }
+      } catch (err) { console.error("Error cargando grupo:", err); }
+
       setWellness(wellnessData);
       setSessions(sessionsData);
+      setGroup(groupData);
       if (hasTechnicalError) setError("No se han podido cargar algunos datos del día.");
       setLoading(false);
     }
@@ -225,14 +238,26 @@ export default function AthleteHomePage() {
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-sm font-semibold text-slate-50">Tu grupo de entrenamiento</h2>
-              <p className="text-[11px] text-slate-400">
-                Cuando tu entrenador cree un grupo, podrás unirte aquí.
-              </p>
+              {group ? (
+                <p className="text-[11px] text-emerald-400 mt-0.5">
+                  Perteneces a <span className="font-semibold">{group.name}</span>
+                </p>
+              ) : (
+                <p className="text-[11px] text-slate-400">
+                  Cuando tu entrenador cree un grupo, podrás unirte aquí.
+                </p>
+              )}
             </div>
-            <Link href="/athlete/join-group"
-              className="text-[11px] px-3 py-1 rounded-full bg-sky-600 hover:bg-sky-700 text-white font-semibold">
-              Unirme a un grupo
-            </Link>
+            {group ? (
+              <span className="text-[11px] px-3 py-1 rounded-full bg-emerald-900/40 border border-emerald-700/50 text-emerald-300">
+                ✓ Miembro
+              </span>
+            ) : (
+              <Link href="/athlete/join-group"
+                className="text-[11px] px-3 py-1 rounded-full bg-sky-600 hover:bg-sky-700 text-white font-semibold">
+                Unirme a un grupo
+              </Link>
+            )}
           </div>
         </section>
 
