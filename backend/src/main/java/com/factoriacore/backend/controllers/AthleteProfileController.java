@@ -55,7 +55,7 @@ public class AthleteProfileController {
         if (incoming.getMenstrualDuration() != null) profile.setMenstrualDuration(incoming.getMenstrualDuration());
         if (incoming.getLastPeriodDate() != null)    profile.setLastPeriodDate(incoming.getLastPeriodDate());
 
-        profile.setActive(incoming.isActive());
+        // No sobreescribir active desde el frontend — se gestiona internamente
 
         return profileRepo.save(profile);
     }
