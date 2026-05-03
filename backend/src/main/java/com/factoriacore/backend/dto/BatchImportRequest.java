@@ -3,8 +3,10 @@ package com.factoriacore.backend.dto;
 import com.factoriacore.backend.models.enums.BlockTarget;
 import com.factoriacore.backend.models.enums.BlockType;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import java.util.List;
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class BatchImportRequest {
 
     private List<Long> groupIds;
@@ -18,6 +20,7 @@ public class BatchImportRequest {
     public BatchImportRequest() {
     }
 
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class BlockData {
         private Integer blockOrder;
         private BlockType blockType;
