@@ -33,6 +33,7 @@ export async function getCycleStatus(
     credentials: "include",
   });
   if (res.status === 204 || res.status === 404) return null;
+  if (res.status === 401) throw new Error("UNAUTHORIZED");
   if (!res.ok) throw new Error("Error al obtener el estado del ciclo");
   return res.json();
 }

@@ -36,14 +36,18 @@ export default function CycleBlock({ athleteId }: Props) {
   const [registerSuccess, setRegisterSuccess] = useState(false);
   const [expanded, setExpanded] = useState(false);
 
-  async function load() {
+  async function load(attempt = 0) {
     try {
       const data = await getCycleStatus(athleteId);
       setStatus(data);
-    } catch {
-      // not critical
-    } finally {
       setLoading(false);
+    } catch (err: any) {
+      // Si recibimos 401, la sesión puede no estar lista — reintentamos hasta 3 veces
+      if (attempt < 3) {
+        setTimeout(() => load(attempt + 1), 800 * (attempt + 1));
+      } else {
+        setLoading(false);
+      }
     }
   }
 
