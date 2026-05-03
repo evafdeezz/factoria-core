@@ -8,6 +8,9 @@ import { useCurrentUser } from "@/components/CurrentUserProvider";
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL || "https://factoriacore.duckdns.org/api";
 
+const MIN_BIRTH_DATE = "1900-01-01";
+const MIN_PERIOD_DATE = "2024-01-01";
+
 type PendingOAuthUser = {
   fullName: string;
   email: string;
@@ -25,6 +28,18 @@ type RegisteredUser = {
 
 type Step = 1 | 2 | 3;
 
+function todayIsoDate() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function isValidBirthDate(value: string) {
+  return value >= MIN_BIRTH_DATE && value <= todayIsoDate();
+}
+
+function isValidPeriodDate(value: string) {
+  return value >= MIN_PERIOD_DATE && value <= todayIsoDate();
+}
+
 export default function RegisterCompletePage() {
   const router = useRouter();
   const { setUser } = useCurrentUser();
@@ -35,15 +50,12 @@ export default function RegisterCompletePage() {
   const [error, setError] = useState<string | null>(null);
   const [step, setStep] = useState<Step>(1);
 
-  // Step 1
   const [role, setRole] = useState<"COACH" | "ATHLETE" | "">("");
 
-  // Step 2
   const [fullName, setFullName] = useState("");
   const [birthDate, setBirthDate] = useState("");
   const [sex, setSex] = useState<"MALE" | "FEMALE" | "PREFER_NOT_TO_SAY" | "">("");
 
-  // Step 3 — menstrual
   const [menstrualEnabled, setMenstrualEnabled] = useState(false);
   const [shareWithCoach, setShareWithCoach] = useState(false);
   const [cycleLength, setCycleLength] = useState(28);
@@ -56,7 +68,12 @@ export default function RegisterCompletePage() {
         const res = await fetch(`${API_BASE_URL}/auth/oauth/pending`, {
           credentials: "include",
         });
-        if (!res.ok) { router.replace("/login?tab=register&error=NO_PENDING_OAUTH"); return; }
+
+        if (!res.ok) {
+          router.replace("/login?tab=register&error=NO_PENDING_OAUTH");
+          return;
+        }
+
         const data = (await res.json()) as PendingOAuthUser;
         setPendingUser(data);
         setFullName(data.fullName || "");
@@ -66,20 +83,43 @@ export default function RegisterCompletePage() {
         setLoading(false);
       }
     };
+
     void load();
   }, [router]);
 
   const handleStep1 = () => {
-    if (!role) { setError("Selecciona un rol."); return; }
+    if (!role) {
+      setError("Selecciona un rol.");
+      return;
+    }
+
     setError(null);
     setStep(2);
   };
 
   const handleStep2 = () => {
-    if (!fullName.trim()) { setError("El nombre es obligatorio."); return; }
-    if (!birthDate) { setError("La fecha de nacimiento es obligatoria."); return; }
-    if (!sex) { setError("El sexo es obligatorio."); return; }
+    if (!fullName.trim()) {
+      setError("El nombre es obligatorio.");
+      return;
+    }
+
+    if (!birthDate) {
+      setError("La fecha de nacimiento es obligatoria.");
+      return;
+    }
+
+    if (!isValidBirthDate(birthDate)) {
+      setError("La fecha de nacimiento debe estar entre 1900 y la fecha actual.");
+      return;
+    }
+
+    if (!sex) {
+      setError("El sexo es obligatorio.");
+      return;
+    }
+
     setError(null);
+
     if (role === "ATHLETE" && sex === "FEMALE") {
       setStep(3);
     } else {
@@ -87,19 +127,76 @@ export default function RegisterCompletePage() {
     }
   };
 
+  const validateBeforeSubmit = () => {
+    if (!role) {
+      setError("Selecciona un rol.");
+      return false;
+    }
+
+    if (!fullName.trim()) {
+      setError("El nombre es obligatorio.");
+      return false;
+    }
+
+    if (!birthDate || !isValidBirthDate(birthDate)) {
+      setError("La fecha de nacimiento debe estar entre 1900 y la fecha actual.");
+      return false;
+    }
+
+    if (!sex) {
+      setError("El sexo es obligatorio.");
+      return false;
+    }
+
+    if (role === "ATHLETE" && sex === "FEMALE" && menstrualEnabled) {
+      if (!lastPeriodDate) {
+        setError("Introduce la fecha de inicio del último período.");
+        return false;
+      }
+
+      if (!isValidPeriodDate(lastPeriodDate)) {
+        setError("La fecha del último período debe estar entre 2024 y la fecha actual.");
+        return false;
+      }
+
+      if (cycleLength < 20 || cycleLength > 45) {
+        setError("La duración del ciclo debe estar entre 20 y 45 días.");
+        return false;
+      }
+
+      if (menstrualDuration < 2 || menstrualDuration > 10) {
+        setError("La duración de la menstruación debe estar entre 2 y 10 días.");
+        return false;
+      }
+    }
+
+    return true;
+  };
+
   const submitAll = async () => {
-    setSubmitting(true);
     setError(null);
 
-    const payload: Record<string, unknown> = { role, fullName, birthDate, sex };
+    if (!validateBeforeSubmit()) {
+      return;
+    }
+
+    setSubmitting(true);
+
+    const payload: Record<string, unknown> = {
+      role,
+      fullName,
+      birthDate,
+      sex,
+    };
 
     if (role === "ATHLETE" && sex === "FEMALE") {
       payload.menstrualTrackingEnabled = menstrualEnabled;
+
       if (menstrualEnabled) {
         payload.shareMenstrualDataWithCoach = shareWithCoach;
         payload.cycleLength = cycleLength;
         payload.menstrualDuration = menstrualDuration;
-        payload.lastPeriodDate = lastPeriodDate || null;
+        payload.lastPeriodDate = lastPeriodDate;
       }
     }
 
@@ -112,12 +209,19 @@ export default function RegisterCompletePage() {
       });
 
       if (!res.ok) {
-        if (res.status === 409) { router.replace("/login?error=EMAIL_ALREADY_EXISTS"); return; }
+        if (res.status === 409) {
+          router.replace("/login?error=EMAIL_ALREADY_EXISTS");
+          return;
+        }
+
+        const text = await res.text();
+        console.error("Error completando registro:", text);
         setError("No se ha podido completar el registro.");
         return;
       }
 
       const data = (await res.json()) as RegisteredUser;
+
       setUser({
         id: data.id,
         fullName: data.fullName,
@@ -126,6 +230,7 @@ export default function RegisterCompletePage() {
         pictureUrl: data.pictureUrl ?? null,
         athleteProfileId: data.athleteProfileId ?? null,
       });
+
       router.replace(data.role === "COACH" ? "/coach" : "/athlete");
     } catch {
       setError("Error de conexión con el servidor.");
@@ -134,103 +239,175 @@ export default function RegisterCompletePage() {
     }
   };
 
-  if (loading) return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-sky-900">
-      <p className="text-sm text-slate-300">Preparando registro...</p>
-    </div>
-  );
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-sky-900">
+        <p className="text-sm text-slate-300">Preparando registro...</p>
+      </div>
+    );
+  }
 
   if (!pendingUser) return null;
 
-  const initials = pendingUser.fullName.split(" ").map((n) => n[0]).slice(0, 2).join("").toUpperCase();
+  const initials = pendingUser.fullName
+    .split(" ")
+    .map((n) => n[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+
   const totalSteps = role === "ATHLETE" && sex === "FEMALE" ? 3 : 2;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-sky-900 flex items-center justify-center px-4 py-10">
       <div className="w-full max-w-lg bg-white text-slate-900 rounded-3xl shadow-2xl p-6 md:p-8 space-y-6">
-
-        {/* Header */}
         <div className="flex items-center gap-3">
           <div className="relative w-12 h-12 rounded-full overflow-hidden border-2 border-sky-400 flex-shrink-0">
             {pendingUser.pictureUrl ? (
-              <Image src={pendingUser.pictureUrl} alt={pendingUser.fullName}
-                fill sizes="64px" className="object-cover" referrerPolicy="no-referrer" />
+              <Image
+                src={pendingUser.pictureUrl}
+                alt={pendingUser.fullName}
+                fill
+                sizes="64px"
+                className="object-cover"
+                referrerPolicy="no-referrer"
+              />
             ) : (
               <div className="w-full h-full bg-sky-600 flex items-center justify-center text-white font-semibold">
                 {initials}
               </div>
             )}
           </div>
+
           <div>
-            <p className="text-xs tracking-[0.2em] text-sky-600 uppercase">Factoría Core</p>
+            <p className="text-xs tracking-[0.2em] text-sky-600 uppercase">
+              Factoría Core
+            </p>
             <h1 className="text-xl font-semibold">Completa tu registro</h1>
           </div>
         </div>
 
-        {/* Progress bar */}
         <div className="flex gap-1.5">
           {Array.from({ length: totalSteps }, (_, i) => (
-            <div key={i} className={`h-1 flex-1 rounded-full transition-colors ${step > i ? "bg-sky-500" : "bg-slate-200"}`} />
+            <div
+              key={i}
+              className={`h-1 flex-1 rounded-full transition-colors ${
+                step > i ? "bg-sky-500" : "bg-slate-200"
+              }`}
+            />
           ))}
         </div>
 
         {error && (
-          <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>
+          <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+            {error}
+          </p>
         )}
 
-        {/* PASO 1 — Rol */}
         {step === 1 && (
           <div className="space-y-4">
-            <p className="text-sm text-slate-500">¿Cómo vas a usar Factoría Core?</p>
+            <p className="text-sm text-slate-500">
+              ¿Cómo vas a usar Factoría Core?
+            </p>
+
             <div className="grid grid-cols-2 gap-3">
               {(["COACH", "ATHLETE"] as const).map((r) => (
-                <button key={r} type="button" onClick={() => setRole(r)}
-                  className={`border-2 rounded-xl p-4 text-center transition-all ${role === r ? "border-sky-500 bg-sky-50 text-sky-700" : "border-slate-200 text-slate-600 hover:border-slate-300"}`}>
+                <button
+                  key={r}
+                  type="button"
+                  onClick={() => setRole(r)}
+                  className={`border-2 rounded-xl p-4 text-center transition-all ${
+                    role === r
+                      ? "border-sky-500 bg-sky-50 text-sky-700"
+                      : "border-slate-200 text-slate-600 hover:border-slate-300"
+                  }`}
+                >
                   <p className="text-2xl mb-1">{r === "COACH" ? "🎯" : "🏃"}</p>
-                  <p className="text-sm font-semibold">{r === "COACH" ? "Entrenador/a" : "Atleta"}</p>
+                  <p className="text-sm font-semibold">
+                    {r === "COACH" ? "Entrenador/a" : "Atleta"}
+                  </p>
                 </button>
               ))}
             </div>
-            <button onClick={handleStep1} disabled={!role}
-              className="w-full bg-sky-600 hover:bg-sky-700 text-white rounded-lg py-2 text-sm font-semibold disabled:opacity-50">
+
+            <button
+              onClick={handleStep1}
+              disabled={!role}
+              className="w-full bg-sky-600 hover:bg-sky-700 text-white rounded-lg py-2 text-sm font-semibold disabled:opacity-50"
+            >
               Continuar →
             </button>
           </div>
         )}
 
-        {/* PASO 2 — Datos personales */}
         {step === 2 && (
           <div className="space-y-4">
-            <p className="text-sm text-slate-500">Cuéntanos un poco sobre ti.</p>
+            <p className="text-sm text-slate-500">
+              Cuéntanos un poco sobre ti.
+            </p>
 
             <div className="space-y-1">
-              <label className="text-xs font-medium text-slate-700">Nombre completo</label>
-              <input type="text" value={fullName} onChange={(e) => setFullName(e.target.value)}
-                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400" />
+              <label className="text-xs font-medium text-slate-700">
+                Nombre completo
+              </label>
+              <input
+                type="text"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400"
+              />
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs font-medium text-slate-700">Email</label>
-              <input type="email" value={pendingUser.email} disabled
-                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-slate-50 text-slate-400" />
+              <label className="text-xs font-medium text-slate-700">
+                Email
+              </label>
+              <input
+                type="email"
+                value={pendingUser.email}
+                disabled
+                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-slate-50 text-slate-400"
+              />
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs font-medium text-slate-700">Fecha de nacimiento</label>
-              <input type="date" value={birthDate} onChange={(e) => setBirthDate(e.target.value)}
-                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400" />
+              <label className="text-xs font-medium text-slate-700">
+                Fecha de nacimiento
+              </label>
+              <input
+                type="date"
+                value={birthDate}
+                min={MIN_BIRTH_DATE}
+                max={todayIsoDate()}
+                onChange={(e) => setBirthDate(e.target.value)}
+                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400"
+              />
             </div>
 
             <div className="space-y-2">
-              <label className="text-xs font-medium text-slate-700">Sexo</label>
+              <label className="text-xs font-medium text-slate-700">
+                Sexo
+              </label>
               <div className="grid grid-cols-3 gap-2">
-                {([
+                {[
                   { value: "MALE", label: "Hombre" },
                   { value: "FEMALE", label: "Mujer" },
                   { value: "PREFER_NOT_TO_SAY", label: "Prefiero no decirlo" },
-                ] as const).map((opt) => (
-                  <button key={opt.value} type="button" onClick={() => setSex(opt.value)}
-                    className={`border-2 rounded-lg py-2 px-1 text-xs font-medium transition-all ${sex === opt.value ? "border-sky-500 bg-sky-50 text-sky-700" : "border-slate-200 text-slate-600 hover:border-slate-300"}`}>
+                ].map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() =>
+                      setSex(
+                        opt.value as "MALE" | "FEMALE" | "PREFER_NOT_TO_SAY"
+                      )
+                    }
+                    className={`border-2 rounded-lg py-2 px-1 text-xs font-medium transition-all ${
+                      sex === opt.value
+                        ? "border-sky-500 bg-sky-50 text-sky-700"
+                        : "border-slate-200 text-slate-600 hover:border-slate-300"
+                    }`}
+                  >
                     {opt.label}
                   </button>
                 ))}
@@ -238,36 +415,60 @@ export default function RegisterCompletePage() {
             </div>
 
             <div className="flex gap-2 pt-1">
-              <button type="button" onClick={() => { setStep(1); setError(null); }}
-                className="flex-1 border border-slate-200 rounded-lg py-2 text-sm text-slate-600 hover:bg-slate-50">
+              <button
+                type="button"
+                onClick={() => {
+                  setStep(1);
+                  setError(null);
+                }}
+                className="flex-1 border border-slate-200 rounded-lg py-2 text-sm text-slate-600 hover:bg-slate-50"
+              >
                 ← Volver
               </button>
-              <button type="button" onClick={handleStep2} disabled={submitting}
-                className="flex-1 bg-sky-600 hover:bg-sky-700 text-white rounded-lg py-2 text-sm font-semibold disabled:opacity-60">
+
+              <button
+                type="button"
+                onClick={handleStep2}
+                disabled={submitting}
+                className="flex-1 bg-sky-600 hover:bg-sky-700 text-white rounded-lg py-2 text-sm font-semibold disabled:opacity-60"
+              >
                 {role === "ATHLETE" && sex === "FEMALE"
                   ? "Continuar →"
-                  : submitting ? "Creando..." : "Crear cuenta"}
+                  : submitting
+                  ? "Creando..."
+                  : "Crear cuenta"}
               </button>
             </div>
           </div>
         )}
 
-        {/* PASO 3 — Ciclo menstrual */}
         {step === 3 && (
           <div className="space-y-4">
             <div>
-              <p className="text-sm font-medium text-slate-800">Seguimiento del ciclo menstrual</p>
+              <p className="text-sm font-medium text-slate-800">
+                Seguimiento del ciclo menstrual
+              </p>
               <p className="text-xs text-slate-500 mt-1">
-                Registrar tu ciclo permite adaptar la planificación a tu cuerpo. Es completamente
-                opcional y puedes cambiar tus preferencias en cualquier momento desde Ajustes.
+                Registrar tu ciclo permite adaptar la planificación a tu cuerpo.
+                Es opcional y puedes cambiarlo después desde Ajustes.
               </p>
             </div>
 
             <label className="flex items-center justify-between cursor-pointer select-none">
-              <span className="text-sm text-slate-700">Quiero registrar mi ciclo menstrual</span>
-              <div onClick={() => setMenstrualEnabled((v) => !v)}
-                className={`relative w-10 h-6 rounded-full transition-colors cursor-pointer ${menstrualEnabled ? "bg-sky-500" : "bg-slate-300"}`}>
-                <div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-all ${menstrualEnabled ? "left-5" : "left-1"}`} />
+              <span className="text-sm text-slate-700">
+                Quiero registrar mi ciclo menstrual
+              </span>
+              <div
+                onClick={() => setMenstrualEnabled((v) => !v)}
+                className={`relative w-10 h-6 rounded-full transition-colors cursor-pointer ${
+                  menstrualEnabled ? "bg-sky-500" : "bg-slate-300"
+                }`}
+              >
+                <div
+                  className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-all ${
+                    menstrualEnabled ? "left-5" : "left-1"
+                  }`}
+                />
               </div>
             </label>
 
@@ -275,18 +476,39 @@ export default function RegisterCompletePage() {
               <div className="space-y-4 border-t border-slate-100 pt-4">
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
-                    <label className="text-xs font-medium text-slate-700">Duración del ciclo (días)</label>
-                    <input type="number" min={20} max={45} value={cycleLength}
+                    <label className="text-xs font-medium text-slate-700">
+                      Duración del ciclo (días)
+                    </label>
+                    <input
+                      type="number"
+                      min={20}
+                      max={45}
+                      value={cycleLength}
                       onChange={(e) => setCycleLength(Number(e.target.value))}
-                      className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400" />
-                    <p className="text-[10px] text-slate-400">Por defecto: 28 días</p>
+                      className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400"
+                    />
+                    <p className="text-[10px] text-slate-400">
+                      Por defecto: 28 días
+                    </p>
                   </div>
+
                   <div className="space-y-1">
-                    <label className="text-xs font-medium text-slate-700">Duración menstruación (días)</label>
-                    <input type="number" min={2} max={10} value={menstrualDuration}
-                      onChange={(e) => setMenstrualDuration(Number(e.target.value))}
-                      className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400" />
-                    <p className="text-[10px] text-slate-400">Por defecto: 5 días</p>
+                    <label className="text-xs font-medium text-slate-700">
+                      Duración menstruación (días)
+                    </label>
+                    <input
+                      type="number"
+                      min={2}
+                      max={10}
+                      value={menstrualDuration}
+                      onChange={(e) =>
+                        setMenstrualDuration(Number(e.target.value))
+                      }
+                      className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400"
+                    />
+                    <p className="text-[10px] text-slate-400">
+                      Por defecto: 5 días
+                    </p>
                   </div>
                 </div>
 
@@ -294,33 +516,61 @@ export default function RegisterCompletePage() {
                   <label className="text-xs font-medium text-slate-700">
                     Fecha de inicio del último período
                   </label>
-                  <input type="date" value={lastPeriodDate}
+                  <input
+                    type="date"
+                    value={lastPeriodDate}
+                    min={MIN_PERIOD_DATE}
+                    max={todayIsoDate()}
                     onChange={(e) => setLastPeriodDate(e.target.value)}
-                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400" />
+                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400"
+                  />
                 </div>
 
                 <label className="flex items-center justify-between cursor-pointer select-none gap-3">
                   <div>
-                    <p className="text-sm text-slate-700">Compartir datos con mi entrenadora</p>
+                    <p className="text-sm text-slate-700">
+                      Compartir datos con mi entrenadora
+                    </p>
                     <p className="text-[10px] text-slate-400 mt-0.5">
-                      Solo tu entrenadora podrá verlos. Puedes revocar el acceso en Ajustes.
+                      Solo tu entrenadora podrá verlos. Puedes revocar el acceso
+                      en Ajustes.
                     </p>
                   </div>
-                  <div onClick={() => setShareWithCoach((v) => !v)}
-                    className={`relative w-10 h-6 rounded-full transition-colors flex-shrink-0 cursor-pointer ${shareWithCoach ? "bg-sky-500" : "bg-slate-300"}`}>
-                    <div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-all ${shareWithCoach ? "left-5" : "left-1"}`} />
+
+                  <div
+                    onClick={() => setShareWithCoach((v) => !v)}
+                    className={`relative w-10 h-6 rounded-full transition-colors flex-shrink-0 cursor-pointer ${
+                      shareWithCoach ? "bg-sky-500" : "bg-slate-300"
+                    }`}
+                  >
+                    <div
+                      className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-all ${
+                        shareWithCoach ? "left-5" : "left-1"
+                      }`}
+                    />
                   </div>
                 </label>
               </div>
             )}
 
             <div className="flex gap-2 pt-1">
-              <button type="button" onClick={() => { setStep(2); setError(null); }}
-                className="flex-1 border border-slate-200 rounded-lg py-2 text-sm text-slate-600 hover:bg-slate-50">
+              <button
+                type="button"
+                onClick={() => {
+                  setStep(2);
+                  setError(null);
+                }}
+                className="flex-1 border border-slate-200 rounded-lg py-2 text-sm text-slate-600 hover:bg-slate-50"
+              >
                 ← Volver
               </button>
-              <button type="button" onClick={() => void submitAll()} disabled={submitting}
-                className="flex-1 bg-sky-600 hover:bg-sky-700 text-white rounded-lg py-2 text-sm font-semibold disabled:opacity-60">
+
+              <button
+                type="button"
+                onClick={() => void submitAll()}
+                disabled={submitting}
+                className="flex-1 bg-sky-600 hover:bg-sky-700 text-white rounded-lg py-2 text-sm font-semibold disabled:opacity-60"
+              >
                 {submitting ? "Creando cuenta..." : "Crear cuenta"}
               </button>
             </div>
