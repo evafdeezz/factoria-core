@@ -35,26 +35,18 @@ export default function CycleBlock({ athleteId }: Props) {
   const [registering, setRegistering] = useState(false);
   const [registerSuccess, setRegisterSuccess] = useState(false);
   const [expanded, setExpanded] = useState(false);
-  const [unauthorized, setUnauthorized] = useState(false);
 
-  async function load(attempt = 0) {
+  async function load() {
     try {
       const data = await getCycleStatus(athleteId);
       setStatus(data);
-      setLoading(false);
     } catch (err: any) {
-      // Si recibimos 401, la sesión ha expirado — no tiene sentido reintentar
       if (err?.message === "UNAUTHORIZED") {
-        setUnauthorized(true);
-        setLoading(false);
-        return;
+        router.replace("/login");
       }
-      // Para otros errores de red, reintentamos hasta 3 veces
-      if (attempt < 3) {
-        setTimeout(() => load(attempt + 1), 800 * (attempt + 1));
-      } else {
-        setLoading(false);
-      }
+      // otros errores de red: simplemente no mostrar el bloque
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -77,25 +69,7 @@ export default function CycleBlock({ athleteId }: Props) {
     }
   }
 
-  if (loading || (!status && !unauthorized)) return null;
-
-  // Si la sesión expiró, mostrar aviso para que el usuario vuelva a iniciar sesión
-  if (unauthorized) return (
-    <div className="border border-amber-700 bg-amber-950/20 rounded-2xl p-4 flex items-center justify-between gap-3">
-      <p className="text-xs text-amber-300">
-        Tu sesión ha expirado. Vuelve a iniciar sesión para ver tu ciclo menstrual.
-      </p>
-      <button
-        type="button"
-        onClick={() => router.push("/login")}
-        className="flex-shrink-0 text-[11px] font-semibold px-3 py-1.5 rounded-lg bg-amber-700 hover:bg-amber-600 text-white"
-      >
-        Iniciar sesión
-      </button>
-    </div>
-  );
-
-  if (!status) return null;
+  if (loading || !status) return null;
 
   const phaseKey = status.isLate ? "LATE" : (status.phase ?? "LUTEAL");
   const color = PHASE_COLORS[phaseKey] ?? "border-slate-700 bg-slate-900/40";

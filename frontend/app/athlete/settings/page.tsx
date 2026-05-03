@@ -13,6 +13,8 @@ type Form = {
   email: string;
   birthDate: string;
   sex: "MALE" | "FEMALE" | "PREFER_NOT_TO_SAY" | "";
+  menstrualEnabled: boolean;
+  shareWithCoach: boolean;
 };
 
 export default function AthleteSettingsPage() {
@@ -37,6 +39,8 @@ export default function AthleteSettingsPage() {
           email: user!.email,
           birthDate: profile?.birthDate ?? "",
           sex: (profile?.sex as Form["sex"]) ?? "",
+          menstrualEnabled: profile?.menstrualTrackingEnabled ?? false,
+          shareWithCoach: profile?.shareMenstrualDataWithCoach ?? false,
         });
       } catch {
         setError("No se ha podido cargar tus ajustes.");
@@ -60,6 +64,8 @@ export default function AthleteSettingsPage() {
       await saveAthleteProfile(user.id, {
         birthDate: form.birthDate || null,
         sex: form.sex || null,
+        menstrualTrackingEnabled: form.menstrualEnabled,
+        shareMenstrualDataWithCoach: form.shareWithCoach,
       });
       await refreshUser();
       setMessage("Ajustes guardados correctamente ✓");
