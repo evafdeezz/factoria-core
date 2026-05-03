@@ -40,11 +40,8 @@ export default function CycleBlock({ athleteId }: Props) {
     try {
       const data = await getCycleStatus(athleteId);
       setStatus(data);
-    } catch (err: any) {
-      if (err?.message === "UNAUTHORIZED") {
-        router.replace("/login");
-      }
-      // otros errores de red: simplemente no mostrar el bloque
+    } catch {
+      // Si falla (401, red, etc.) simplemente no mostramos el bloque
     } finally {
       setLoading(false);
     }
