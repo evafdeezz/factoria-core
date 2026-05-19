@@ -3,8 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useCurrentUser } from "@/components/CurrentUserProvider";
-
-// ─── Constants ────────────────────────────────────────────────────────────────
+import { getResultsBySession, SessionResultDto } from "@/lib/sessionResults";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL || "https://factoriacore.duckdns.org/api";
@@ -53,8 +52,6 @@ const BLOCK_ACCENTS: Record<string, string> = {
   OTHER:       "text-slate-400",
 };
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
 interface SessionHeader {
   date: string;
   startTime: string;
@@ -68,7 +65,7 @@ type BlockStatus = "saved" | "new" | "modified" | "deleted";
 
 interface BlockDraft {
   uid: string;
-  id?: number;        // undefined = new (not yet in backend)
+  id?: number;
   blockType: string;
   target: string;
   title: string;
@@ -82,26 +79,20 @@ function makeNewBlock(blockType = "OTHER"): BlockDraft {
   return { uid: uid(), blockType, target: "ALL", title: "", description: "", status: "new" };
 }
 
-// ─── Main page ────────────────────────────────────────────────────────────────
-
 export default function EditSessionPage() {
   const params  = useParams();
   const router  = useRouter();
   const { user } = useCurrentUser();
   const sessionId = Number(params.sessionId);
 
-  // Session header
-  const [header, setHeader] = useState<SessionHeader | null>(null);
-
-  // Blocks — includes deleted ones (hidden but tracked for cleanup)
-  const [blocks, setBlocks] = useState<BlockDraft[]>([]);
-
+  const [header, setHeader]   = useState<SessionHeader | null>(null);
+  const [blocks, setBlocks]   = useState<BlockDraft[]>([]);
+  const [results, setResults] = useState<SessionResultDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving,  setSaving]  = useState(false);
   const [error,   setError]   = useState<string | null>(null);
   const [progress, setProgress] = useState<string | null>(null);
 
-  // ── Load ─────────────────────────────────────────────────────────────────────
   useEffect(() => {
     if (Number.isNaN(sessionId)) return;
 
@@ -140,6 +131,14 @@ export default function EditSessionPage() {
             }));
           setBlocks(drafts);
         }
+
+        try {
+          const allResults = await getResultsBySession(sessionId);
+          setResults(allResults.filter((r) => r.videoUrl));
+        } catch {
+          // no bloqueamos si falla
+        }
+
       } catch (err) {
         console.error(err);
         setError("No se ha podido cargar la sesión.");
@@ -150,8 +149,6 @@ export default function EditSessionPage() {
 
     void load();
   }, [sessionId]);
-
-  // ── Guards ────────────────────────────────────────────────────────────────────
 
   if (!user || user.role !== "COACH") {
     return (
@@ -180,8 +177,6 @@ export default function EditSessionPage() {
     );
   }
 
-  // ── Block helpers ─────────────────────────────────────────────────────────────
-
   const visibleBlocks = blocks.filter((b) => b.status !== "deleted");
 
   const updateBlock = (uid: string, field: keyof BlockDraft, value: string) => {
@@ -194,9 +189,7 @@ export default function EditSessionPage() {
 
   const removeBlock = (uid: string) => {
     setBlocks((prev) => prev.map((b) =>
-      b.uid === uid
-        ? { ...b, status: b.id ? "deleted" : "deleted" } // both cases mark deleted
-        : b
+      b.uid === uid ? { ...b, status: "deleted" as BlockStatus } : b
     ));
   };
 
@@ -210,14 +203,10 @@ export default function EditSessionPage() {
       const idx = visible.findIndex((b) => b.uid === uid);
       const next = idx + dir;
       if (idx < 0 || next < 0 || next >= visible.length) return prev;
-
-      // Swap in the full array
       const fullIdxA = prev.findIndex((b) => b.uid === visible[idx].uid);
       const fullIdxB = prev.findIndex((b) => b.uid === visible[next].uid);
       const copy = [...prev];
       [copy[fullIdxA], copy[fullIdxB]] = [copy[fullIdxB], copy[fullIdxA]];
-
-      // Mark both as modified if they were saved
       return copy.map((b) =>
         (b.uid === visible[idx].uid || b.uid === visible[next].uid) && b.status === "saved"
           ? { ...b, status: "modified" }
@@ -225,8 +214,6 @@ export default function EditSessionPage() {
       );
     });
   };
-
-  // ── Submit ────────────────────────────────────────────────────────────────────
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -246,7 +233,6 @@ export default function EditSessionPage() {
     try {
       setSaving(true);
 
-      // 1 — Update session header
       setProgress("Guardando sesión...");
       const sessRes = await fetch(`${API_BASE_URL}/sessions/${sessionId}`, {
         method: "PUT",
@@ -263,7 +249,6 @@ export default function EditSessionPage() {
       });
       if (!sessRes.ok) throw new Error("Error al guardar la sesión.");
 
-      // 2 — Delete removed blocks
       const toDelete = blocks.filter((b) => b.status === "deleted" && b.id);
       for (let i = 0; i < toDelete.length; i++) {
         setProgress(`Eliminando bloque ${i + 1} de ${toDelete.length}...`);
@@ -272,7 +257,6 @@ export default function EditSessionPage() {
         });
       }
 
-      // 3 — Update modified blocks & create new ones (in visible order)
       let order = 1;
       for (const block of visibleBlocks) {
         if (block.status === "new") {
@@ -305,7 +289,6 @@ export default function EditSessionPage() {
             }),
           });
         } else if (block.status === "saved" && block.id) {
-          // Update order even if content unchanged
           await fetch(`${API_BASE_URL}/session-blocks/${block.id}`, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
@@ -334,8 +317,6 @@ export default function EditSessionPage() {
     }
   };
 
-  // ── Render ────────────────────────────────────────────────────────────────────
-
   const changedBlocks = blocks.filter((b) => b.status !== "saved").length;
 
   return (
@@ -357,14 +338,30 @@ export default function EditSessionPage() {
           )}
         </header>
 
+        {/* Vídeos de atletas */}
+        {results.length > 0 && (
+          <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 space-y-2">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+              Vídeos de atletas
+            </p>
+            {results.map((r) => (
+              <a key={r.id}
+                href={r.videoUrl!}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 text-sky-400 hover:text-sky-300 text-sm underline break-all">
+                🔗 Atleta #{r.athleteId} — Ver vídeo
+              </a>
+            ))}
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-4">
 
-          {/* ── Session header ───────────────────────────────────────────── */}
           <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 space-y-4">
             <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
               Datos de la sesión
             </p>
-
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-medium text-slate-300 mb-1">Fecha</label>
@@ -379,14 +376,12 @@ export default function EditSessionPage() {
                   className="w-full border border-slate-700 rounded-lg bg-slate-950/40 px-3 py-2 text-sm text-slate-100 [color-scheme:dark]" />
               </div>
             </div>
-
             <div>
               <label className="block text-xs font-medium text-slate-300 mb-1">Título</label>
               <input type="text" value={header.title}
                 onChange={(e) => setHeader({ ...header, title: e.target.value })}
                 className="w-full border border-slate-700 rounded-lg bg-slate-950/40 px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-sky-500/60" />
             </div>
-
             <div>
               <label className="block text-xs font-medium text-slate-300 mb-1">Descripción general</label>
               <textarea value={header.description}
@@ -396,7 +391,6 @@ export default function EditSessionPage() {
             </div>
           </div>
 
-          {/* ── Blocks ───────────────────────────────────────────────────── */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
@@ -418,7 +412,6 @@ export default function EditSessionPage() {
               <div key={block.uid}
                 className={`border rounded-2xl p-4 space-y-3 ${BLOCK_COLORS[block.blockType] ?? BLOCK_COLORS.OTHER} ${block.status === "new" ? "ring-1 ring-sky-500/40" : ""} ${block.status === "modified" ? "ring-1 ring-amber-500/40" : ""}`}>
 
-                {/* Block header row */}
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span className={`text-[10px] font-bold uppercase tracking-wider ${BLOCK_ACCENTS[block.blockType] ?? BLOCK_ACCENTS.OTHER}`}>
@@ -478,7 +471,6 @@ export default function EditSessionPage() {
               </div>
             ))}
 
-            {/* Quick-add shortcuts */}
             <div className="flex flex-wrap gap-2 pt-1">
               {BLOCK_TYPES.map((t) => (
                 <button key={t.value} type="button" onClick={() => addBlock(t.value)}
@@ -489,7 +481,6 @@ export default function EditSessionPage() {
             </div>
           </div>
 
-          {/* ── Feedback & submit ─────────────────────────────────────────── */}
           {error && (
             <p className="text-xs text-red-300 bg-red-900/40 border border-red-700 rounded-lg px-3 py-2">{error}</p>
           )}
