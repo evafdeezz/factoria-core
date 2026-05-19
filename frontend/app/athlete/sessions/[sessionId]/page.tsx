@@ -5,7 +5,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useCurrentUser } from "@/components/CurrentUserProvider";
 import { getBlocksBySession, SessionBlockDto } from "@/lib/sessionBlocks";
-import { getSessionVideos, SessionVideoDto } from "@/lib/sessionVideos";
+import { getSessionResult, SessionResultDto } from "@/lib/sessionResults";
 
 const BLOCK_TYPE_LABELS: Record<string, string> = {
   WARMUP: "Calentamiento",
@@ -42,7 +42,6 @@ const BLOCK_TYPE_COLORS: Record<string, string> = {
 
 function SessionDetailInner() {
   const params = useParams();
-  const router = useRouter();
   const searchParams = useSearchParams();
   const { user } = useCurrentUser();
   const sessionId = Number(params.sessionId);
@@ -54,7 +53,7 @@ function SessionDetailInner() {
     : "/athlete/sessions";
 
   const [blocks, setBlocks] = useState<SessionBlockDto[]>([]);
-  const [videos, setVideos] = useState<SessionVideoDto[]>([]);
+  const [result, setResult] = useState<SessionResultDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -64,12 +63,14 @@ function SessionDetailInner() {
     async function load() {
       try {
         setLoading(true);
-        const [data, vids] = await Promise.all([
+        const [data, existing] = await Promise.all([
           getBlocksBySession(sessionId),
-          user?.athleteProfileId ? getSessionVideos(sessionId, user.athleteProfileId) : Promise.resolve([]),
+          user?.athleteProfileId
+            ? getSessionResult(user.athleteProfileId, sessionId)
+            : Promise.resolve(null),
         ]);
         setBlocks(data);
-        setVideos(vids);
+        setResult(existing);
       } catch (err) {
         console.error(err);
         setError("No se han podido cargar los bloques de la sesión.");
@@ -79,93 +80,62 @@ function SessionDetailInner() {
     }
 
     void load();
-  }, [sessionId]);
+  }, [sessionId, user?.athleteProfileId]);
 
-  if (!user) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-sky-900 text-slate-100">
-        <p className="text-sm text-slate-300">No has iniciado sesión.</p>
-      </div>
-    );
-  }
+  if (!user) return (
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-sky-900 text-slate-100">
+      <p className="text-sm text-slate-300">No has iniciado sesión.</p>
+    </div>
+  );
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-sky-900 text-slate-100">
-        <p className="text-sm text-slate-300">Cargando entrenamiento...</p>
-      </div>
-    );
-  }
+  if (loading) return (
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-sky-900 text-slate-100">
+      <p className="text-sm text-slate-300">Cargando entrenamiento...</p>
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-sky-900 text-slate-50 px-4 py-6">
       <div className="max-w-3xl mx-auto space-y-4">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-[10px] tracking-[0.2em] uppercase text-sky-300">
-              Detalle de sesión
-            </p>
+            <p className="text-[10px] tracking-[0.2em] uppercase text-sky-300">Detalle de sesión</p>
             <h1 className="text-2xl font-semibold">Sesión #{sessionId}</h1>
           </div>
           <div className="flex gap-3">
-            <Link
-              href={`/athlete/sessions/${sessionId}/result`}
-              className="text-xs bg-sky-600 text-white px-4 py-2 rounded-full hover:bg-sky-700 font-semibold"
-            >
+            <Link href={`/athlete/sessions/${sessionId}/result`}
+              className="text-xs bg-sky-600 text-white px-4 py-2 rounded-full hover:bg-sky-700 font-semibold">
               Registrar resultado
             </Link>
-            <Link
-              href={backHref}
-              className="text-xs text-slate-300 hover:text-slate-100 underline"
-            >
+            <Link href={backHref} className="text-xs text-slate-300 hover:text-slate-100 underline">
               ← Volver al calendario
             </Link>
           </div>
         </div>
 
         {error && (
-          <p className="text-xs text-red-300 bg-red-900/40 border border-red-700 rounded-lg px-3 py-2">
-            {error}
-          </p>
+          <p className="text-xs text-red-300 bg-red-900/40 border border-red-700 rounded-lg px-3 py-2">{error}</p>
+        )}
+
+        {/* Enlace de vídeo si existe resultado con vídeo */}
+        {result?.videoUrl && (
+          <div className="bg-slate-900/60 border border-slate-800 rounded-2xl px-4 py-3 flex items-center gap-2">
+            <span className="text-[10px] uppercase tracking-wider text-slate-400 flex-shrink-0">Vídeo</span>
+            <a href={result.videoUrl} target="_blank" rel="noopener noreferrer"
+              className="text-sky-400 hover:text-sky-300 text-sm underline break-all">
+              🔗 Ver vídeo de la sesión
+            </a>
+          </div>
         )}
 
         {blocks.length === 0 && !error && (
-          <p className="text-sm text-slate-300">
-            Esta sesión no tiene bloques de entrenamiento.
-          </p>
-        )}
-
-        {/* Vídeos */}
-        {videos.length > 0 && (
-          <div className="space-y-3">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Vídeos</p>
-            {videos.map((v) => (
-              <div key={v.id} className="space-y-1.5">
-                <video
-                  src={v.url}
-                  controls
-                  className="w-full rounded-xl border border-slate-700 bg-black"
-                />
-                {(v.type || v.notes) && (
-                  <div className="flex gap-2 text-[11px] text-slate-400">
-                    {v.type  && <span className="bg-slate-800 px-1.5 py-0.5 rounded">{v.type}</span>}
-                    {v.notes && <span className="italic">{v.notes}</span>}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
+          <p className="text-sm text-slate-300">Esta sesión no tiene bloques de entrenamiento.</p>
         )}
 
         <div className="space-y-3">
           {blocks.map((block) => (
-            <div
-              key={block.id}
-              className={`border rounded-2xl p-4 space-y-2 ${
-                BLOCK_TYPE_COLORS[block.blockType] ||
-                "border-slate-700 bg-slate-900/60"
-              }`}
-            >
+            <div key={block.id}
+              className={`border rounded-2xl p-4 space-y-2 ${BLOCK_TYPE_COLORS[block.blockType] || "border-slate-700 bg-slate-900/60"}`}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <span className="text-[10px] font-semibold uppercase tracking-wider text-sky-300">
@@ -177,20 +147,10 @@ function SessionDetailInner() {
                     </span>
                   )}
                 </div>
-                <span className="text-[10px] text-slate-500">
-                  Bloque {block.blockOrder}
-                </span>
+                <span className="text-[10px] text-slate-500">Bloque {block.blockOrder}</span>
               </div>
-
-              {block.title && (
-                <p className="text-sm font-semibold text-slate-100">
-                  {block.title}
-                </p>
-              )}
-
-              <p className="text-xs text-slate-300 whitespace-pre-line leading-relaxed">
-                {block.description}
-              </p>
+              {block.title && <p className="text-sm font-semibold text-slate-100">{block.title}</p>}
+              <p className="text-xs text-slate-300 whitespace-pre-line leading-relaxed">{block.description}</p>
             </div>
           ))}
         </div>

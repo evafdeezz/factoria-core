@@ -5,11 +5,6 @@ import { useParams, useRouter } from "next/navigation";
 import { getBlocksBySession, SessionBlockDto } from "@/lib/sessionBlocks";
 import { getSessionResult, saveSessionResult } from "@/lib/sessionResults";
 import { useCurrentUser } from "@/components/CurrentUserProvider";
-import {
-  getSessionVideos, saveSessionVideo, deleteSessionVideo, SessionVideoDto,
-} from "@/lib/sessionVideos";
-
-// ─── Block type classification ───────────────────────────────────────────────
 
 type BlockMode = "time_series" | "weight_sets" | "notes" | "skip";
 
@@ -27,14 +22,11 @@ function getBlockMode(blockType: string): BlockMode {
   }
 }
 
-/** Try to extract rep count from a description like "4x400m", "3×30m" */
 function parseSeriesCount(description: string): number {
   const m = description.match(/(\d+)\s*[xX×]/);
   if (m) return Math.min(Math.max(parseInt(m[1]), 1), 12);
   return 3;
 }
-
-// ─── Result state types ───────────────────────────────────────────────────────
 
 interface TimeEntry  { value: string }
 interface SetEntry   { reps: string; weight: string }
@@ -45,9 +37,7 @@ type BlockResult =
   | { mode: "notes";       text: string }
   | { mode: "skip" };
 
-type BlockResultsMap = Record<number, BlockResult>; // keyed by block.id
-
-// ─── Serialization ────────────────────────────────────────────────────────────
+type BlockResultsMap = Record<number, BlockResult>;
 
 interface SavedPayload {
   version: 2;
@@ -95,8 +85,6 @@ function buildInitialMap(blocks: SessionBlockDto[]): BlockResultsMap {
   return map;
 }
 
-// ─── Labels ───────────────────────────────────────────────────────────────────
-
 const BLOCK_TYPE_LABELS: Record<string, string> = {
   WARMUP: "Calentamiento", TECHNIQUE: "Técnica", STRENGTH: "Fuerza",
   PLYOMETRICS: "Pliometría", MAIN_SET: "Series principales",
@@ -111,8 +99,6 @@ const BLOCK_TYPE_COLORS: Record<string, { border: string; accent: string }> = {
   TECHNIQUE:   { border: "border-sky-500/40",    accent: "text-sky-400" },
   OTHER:       { border: "border-slate-500/40",  accent: "text-slate-400" },
 };
-
-// ─── Sub-components ───────────────────────────────────────────────────────────
 
 function TimeSeriesInput({
   blockId, result, onChange,
@@ -137,9 +123,7 @@ function TimeSeriesInput({
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
         {result.times.map((t, i) => (
           <div key={i} className="flex items-center gap-1.5">
-            <span className="text-[10px] text-slate-500 w-12 flex-shrink-0">
-              Serie {i + 1}
-            </span>
+            <span className="text-[10px] text-slate-500 w-12 flex-shrink-0">Serie {i + 1}</span>
             <input
               type="text"
               value={t.value}
@@ -151,19 +135,11 @@ function TimeSeriesInput({
         ))}
       </div>
       <div className="flex gap-2 pt-1">
-        <button
-          type="button"
-          onClick={addSeries}
-          className="text-[11px] text-sky-400 hover:text-sky-300"
-        >
+        <button type="button" onClick={addSeries} className="text-[11px] text-sky-400 hover:text-sky-300">
           + Añadir serie
         </button>
         {result.times.length > 1 && (
-          <button
-            type="button"
-            onClick={removeLast}
-            className="text-[11px] text-slate-500 hover:text-slate-400"
-          >
+          <button type="button" onClick={removeLast} className="text-[11px] text-slate-500 hover:text-slate-400">
             – Quitar última
           </button>
         )}
@@ -180,9 +156,7 @@ function WeightSetsInput({
   onChange: (id: number, r: BlockResult) => void;
 }) {
   const update = (i: number, field: "reps" | "weight", value: string) => {
-    const sets = result.sets.map((s, idx) =>
-      idx === i ? { ...s, [field]: value } : s
-    );
+    const sets = result.sets.map((s, idx) => idx === i ? { ...s, [field]: value } : s);
     onChange(blockId, { ...result, sets });
   };
   const addSet = () =>
@@ -194,45 +168,26 @@ function WeightSetsInput({
 
   return (
     <div className="space-y-2">
-      {/* Header */}
       <div className="grid grid-cols-[2rem_1fr_1fr] gap-2 text-[10px] text-slate-500 uppercase tracking-wider px-0.5">
-        <span />
-        <span>Reps</span>
-        <span>Peso (kg)</span>
+        <span /><span>Reps</span><span>Peso (kg)</span>
       </div>
       {result.sets.map((s, i) => (
         <div key={i} className="grid grid-cols-[2rem_1fr_1fr] gap-2 items-center">
           <span className="text-[10px] text-slate-500 text-right">{i + 1}</span>
-          <input
-            type="text"
-            value={s.reps}
-            onChange={(e) => update(i, "reps", e.target.value)}
+          <input type="text" value={s.reps} onChange={(e) => update(i, "reps", e.target.value)}
             placeholder="10"
-            className="border border-slate-700 rounded-lg bg-slate-950/40 px-2 py-1.5 text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none focus:border-orange-500/60"
-          />
-          <input
-            type="text"
-            value={s.weight}
-            onChange={(e) => update(i, "weight", e.target.value)}
+            className="border border-slate-700 rounded-lg bg-slate-950/40 px-2 py-1.5 text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none focus:border-orange-500/60" />
+          <input type="text" value={s.weight} onChange={(e) => update(i, "weight", e.target.value)}
             placeholder="60"
-            className="border border-slate-700 rounded-lg bg-slate-950/40 px-2 py-1.5 text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none focus:border-orange-500/60"
-          />
+            className="border border-slate-700 rounded-lg bg-slate-950/40 px-2 py-1.5 text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none focus:border-orange-500/60" />
         </div>
       ))}
       <div className="flex gap-2 pt-1">
-        <button
-          type="button"
-          onClick={addSet}
-          className="text-[11px] text-orange-400 hover:text-orange-300"
-        >
+        <button type="button" onClick={addSet} className="text-[11px] text-orange-400 hover:text-orange-300">
           + Añadir serie
         </button>
         {result.sets.length > 1 && (
-          <button
-            type="button"
-            onClick={removeLast}
-            className="text-[11px] text-slate-500 hover:text-slate-400"
-          >
+          <button type="button" onClick={removeLast} className="text-[11px] text-slate-500 hover:text-slate-400">
             – Quitar última
           </button>
         )}
@@ -241,36 +196,24 @@ function WeightSetsInput({
   );
 }
 
-// ─── Main page ────────────────────────────────────────────────────────────────
-
 export default function SessionResultPage() {
   const router = useRouter();
   const params = useParams();
   const { user } = useCurrentUser();
-
   const sessionId = Number(params.sessionId);
 
   const [blocks, setBlocks] = useState<SessionBlockDto[]>([]);
   const [blockResults, setBlockResults] = useState<BlockResultsMap>({});
   const [existingResultId, setExistingResultId] = useState<number | undefined>();
-
   const [rpe, setRpe] = useState("");
   const [comment, setComment] = useState("");
   const [painFlag, setPainFlag] = useState(false);
   const [painNotes, setPainNotes] = useState("");
-
+  const [videoUrl, setVideoUrl] = useState("");
   const [loading, setLoading] = useState(true);
-  const [saving,  setSaving]  = useState(false);
-  const [error,   setError]   = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-
-  // Video state
-  const [videos,     setVideos]     = useState<SessionVideoDto[]>([]);
-  const [videoUrl,   setVideoUrl]   = useState("");
-  const [videoType,  setVideoType]  = useState("");
-  const [videoNotes, setVideoNotes] = useState("");
-  const [videoError, setVideoError] = useState<string | null>(null);
-  const [savingVideo,setSavingVideo] = useState(false);
 
   const athleteId = user?.athleteProfileId;
 
@@ -280,17 +223,12 @@ export default function SessionResultPage() {
     async function load() {
       try {
         setLoading(true);
-        const [loadedBlocks, existing, existingVideos] = await Promise.all([
+        const [loadedBlocks, existing] = await Promise.all([
           getBlocksBySession(sessionId),
           getSessionResult(athleteId!, sessionId),
-          getSessionVideos(sessionId, athleteId!),
         ]);
-        setVideos(existingVideos);
 
-        // Only show blocks that require a result
-        const relevant = loadedBlocks.filter(
-          (b) => getBlockMode(b.blockType) !== "skip"
-        );
+        const relevant = loadedBlocks.filter((b) => getBlockMode(b.blockType) !== "skip");
         setBlocks(relevant);
 
         if (existing) {
@@ -299,6 +237,7 @@ export default function SessionResultPage() {
           setComment(existing.comment ?? "");
           setPainFlag(existing.painFlag ?? false);
           setPainNotes(existing.painNotes ?? "");
+          setVideoUrl(existing.videoUrl ?? "");
           setBlockResults(deserialize(existing.timeMain, relevant));
         } else {
           setBlockResults(buildInitialMap(relevant));
@@ -318,47 +257,12 @@ export default function SessionResultPage() {
     setBlockResults((prev) => ({ ...prev, [id]: result }));
   };
 
-  const handleAddVideo = async () => {
-    if (!videoUrl.trim() || !user?.athleteProfileId) return;
-    setVideoError(null);
-    setSavingVideo(true);
-    try {
-      const saved = await saveSessionVideo({
-        sessionId,
-        athleteId: user.athleteProfileId,
-        url:   videoUrl.trim(),
-        type:  videoType  || null,
-        notes: videoNotes || null,
-      });
-      setVideos(prev => [...prev, saved]);
-      setVideoUrl("");
-      setVideoType("");
-      setVideoNotes("");
-    } catch {
-      setVideoError("No se pudo guardar el enlace.");
-    } finally {
-      setSavingVideo(false);
-    }
-  };
-
-  const handleDeleteVideo = async (id?: number) => {
-    if (!id) return;
-    try {
-      await deleteSessionVideo(id);
-      setVideos(prev => prev.filter(v => v.id !== id));
-    } catch {
-      setVideoError("No se pudo eliminar el enlace.");
-    }
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user?.athleteProfileId) return;
-
     setSaving(true);
     setError(null);
     setSuccess(null);
-
     try {
       await saveSessionResult({
         sessionId,
@@ -368,6 +272,7 @@ export default function SessionResultPage() {
         comment: comment || null,
         painFlag,
         painNotes: painNotes || null,
+        videoUrl: videoUrl.trim() || null,
       });
       setSuccess("Guardado correctamente ✓");
     } catch (err) {
@@ -377,8 +282,6 @@ export default function SessionResultPage() {
       setSaving(false);
     }
   };
-
-  // ── Guards ─────────────────────────────────────────────────────────────────
 
   if (!user) return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-sky-900 text-slate-100">
@@ -398,19 +301,13 @@ export default function SessionResultPage() {
     </div>
   );
 
-  // ── Render ─────────────────────────────────────────────────────────────────
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-sky-900 text-slate-50 px-4 py-6">
       <div className="max-w-2xl mx-auto space-y-5">
 
-        {/* Header */}
         <div>
-          <button
-            type="button"
-            onClick={() => router.back()}
-            className="text-[11px] text-slate-400 hover:text-slate-200 mb-3 underline"
-          >
+          <button type="button" onClick={() => router.back()}
+            className="text-[11px] text-slate-400 hover:text-slate-200 mb-3 underline">
             ← Volver
           </button>
           <p className="text-[10px] tracking-[0.2em] uppercase text-sky-300">
@@ -423,78 +320,46 @@ export default function SessionResultPage() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
 
-          {/* Per-block result cards */}
+          {/* Bloques */}
           {blocks.length === 0 ? (
             <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-4">
-              <p className="text-xs text-slate-400">
-                Esta sesión no tiene bloques que requieran resultado.
-              </p>
+              <p className="text-xs text-slate-400">Esta sesión no tiene bloques que requieran resultado.</p>
             </div>
           ) : (
             blocks.map((block) => {
               const result = blockResults[block.id];
               if (!result || result.mode === "skip") return null;
-
               const colors = BLOCK_TYPE_COLORS[block.blockType] ?? BLOCK_TYPE_COLORS["OTHER"];
-
               return (
-                <div
-                  key={block.id}
-                  className={`bg-slate-900/60 border rounded-2xl p-4 space-y-3 ${colors.border}`}
-                >
-                  {/* Block header */}
+                <div key={block.id} className={`bg-slate-900/60 border rounded-2xl p-4 space-y-3 ${colors.border}`}>
                   <div>
                     <span className={`text-[10px] font-semibold uppercase tracking-wider ${colors.accent}`}>
                       {BLOCK_TYPE_LABELS[block.blockType] ?? block.blockType}
                     </span>
-                    {block.title && (
-                      <p className="text-sm font-semibold text-slate-100 mt-0.5">
-                        {block.title}
-                      </p>
-                    )}
+                    {block.title && <p className="text-sm font-semibold text-slate-100 mt-0.5">{block.title}</p>}
                     {block.description && (
-                      <p className="text-xs text-slate-400 mt-0.5 whitespace-pre-line leading-relaxed">
-                        {block.description}
-                      </p>
+                      <p className="text-xs text-slate-400 mt-0.5 whitespace-pre-line leading-relaxed">{block.description}</p>
                     )}
                   </div>
-
-                  {/* Result inputs */}
                   <div className="pt-1 border-t border-slate-800">
                     {result.mode === "time_series" && (
                       <>
-                        <p className="text-[10px] text-slate-500 mb-2 uppercase tracking-wider">
-                          Tiempos (seg o mm:ss)
-                        </p>
-                        <TimeSeriesInput
-                          blockId={block.id}
-                          result={result}
-                          onChange={updateBlock}
-                        />
+                        <p className="text-[10px] text-slate-500 mb-2 uppercase tracking-wider">Tiempos (seg o mm:ss)</p>
+                        <TimeSeriesInput blockId={block.id} result={result} onChange={updateBlock} />
                       </>
                     )}
                     {result.mode === "weight_sets" && (
                       <>
-                        <p className="text-[10px] text-slate-500 mb-2 uppercase tracking-wider">
-                          Series realizadas
-                        </p>
-                        <WeightSetsInput
-                          blockId={block.id}
-                          result={result}
-                          onChange={updateBlock}
-                        />
+                        <p className="text-[10px] text-slate-500 mb-2 uppercase tracking-wider">Series realizadas</p>
+                        <WeightSetsInput blockId={block.id} result={result} onChange={updateBlock} />
                       </>
                     )}
                     {result.mode === "notes" && (
                       <>
-                        <p className="text-[10px] text-slate-500 mb-2 uppercase tracking-wider">
-                          Notas
-                        </p>
+                        <p className="text-[10px] text-slate-500 mb-2 uppercase tracking-wider">Notas</p>
                         <textarea
                           value={result.text}
-                          onChange={(e) =>
-                            updateBlock(block.id, { mode: "notes", text: e.target.value })
-                          }
+                          onChange={(e) => updateBlock(block.id, { mode: "notes", text: e.target.value })}
                           rows={2}
                           className="w-full border border-slate-700 rounded-lg bg-slate-950/40 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none focus:border-sky-500/60 resize-none"
                           placeholder="Observaciones, sensaciones…"
@@ -507,96 +372,76 @@ export default function SessionResultPage() {
             })
           )}
 
-          {/* Global section: RPE + comment + pain */}
+          {/* Valoración general */}
           <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 space-y-4">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-              Valoración general
-            </p>
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Valoración general</p>
 
-            {/* RPE */}
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-2">
-                RPE — Esfuerzo percibido (1–10)
-              </label>
+              <label className="block text-xs font-medium text-slate-300 mb-2">RPE — Esfuerzo percibido (1–10)</label>
               <div className="flex gap-1.5 flex-wrap">
                 {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
-                  <button
-                    key={n}
-                    type="button"
+                  <button key={n} type="button"
                     onClick={() => setRpe(rpe === String(n) ? "" : String(n))}
                     className={[
                       "w-8 h-8 rounded-lg text-xs font-semibold border transition-colors",
                       rpe === String(n)
-                        ? n <= 3
-                          ? "bg-emerald-600 border-emerald-500 text-white"
-                          : n <= 6
-                          ? "bg-amber-600 border-amber-500 text-white"
+                        ? n <= 3 ? "bg-emerald-600 border-emerald-500 text-white"
+                          : n <= 6 ? "bg-amber-600 border-amber-500 text-white"
                           : "bg-red-600 border-red-500 text-white"
                         : "bg-slate-900 border-slate-700 text-slate-400 hover:border-slate-500",
                     ].join(" ")}
-                  >
-                    {n}
-                  </button>
+                  >{n}</button>
                 ))}
               </div>
             </div>
 
-            {/* Comment */}
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1">
-                Comentarios / sensaciones
-              </label>
-              <textarea
-                value={comment}
-                onChange={(e) => setComment(e.target.value)}
-                rows={3}
+              <label className="block text-xs font-medium text-slate-300 mb-1">Comentarios / sensaciones</label>
+              <textarea value={comment} onChange={(e) => setComment(e.target.value)} rows={3}
                 className="w-full border border-slate-700 rounded-lg bg-slate-950/40 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none focus:border-sky-500/60 resize-none"
-                placeholder="¿Cómo te has sentido? ¿Alguna observación?"
-              />
+                placeholder="¿Cómo te has sentido? ¿Alguna observación?" />
             </div>
 
-            {/* Pain flag */}
             <div className="space-y-2">
               <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={painFlag}
-                  onChange={(e) => setPainFlag(e.target.checked)}
-                  className="w-3.5 h-3.5 accent-red-500"
-                />
-                <span className="text-xs text-slate-300">
-                  He notado dolor o molestia
-                </span>
+                <input type="checkbox" checked={painFlag} onChange={(e) => setPainFlag(e.target.checked)}
+                  className="w-3.5 h-3.5 accent-red-500" />
+                <span className="text-xs text-slate-300">He notado dolor o molestia</span>
               </label>
               {painFlag && (
-                <textarea
-                  value={painNotes}
-                  onChange={(e) => setPainNotes(e.target.value)}
-                  rows={2}
+                <textarea value={painNotes} onChange={(e) => setPainNotes(e.target.value)} rows={2}
                   className="w-full border border-red-700/50 rounded-lg bg-red-950/20 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none focus:border-red-500/60 resize-none"
-                  placeholder="¿Dónde? ¿Cuándo? ¿Intensidad?"
-                />
+                  placeholder="¿Dónde? ¿Cuándo? ¿Intensidad?" />
               )}
             </div>
           </div>
 
-          {/* Feedback */}
-          {error && (
-            <p className="text-xs text-red-300 bg-red-900/40 border border-red-700 rounded-lg px-3 py-2">
-              {error}
+          {/* Vídeo de la sesión */}
+          <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 space-y-2">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+              Vídeo de la sesión (opcional)
             </p>
+            <input
+              type="url"
+              value={videoUrl}
+              onChange={(e) => setVideoUrl(e.target.value)}
+              placeholder="https://drive.google.com/..."
+              className="w-full border border-slate-700 rounded-lg bg-slate-950/40 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none focus:border-sky-500/60"
+            />
+            <p className="text-[10px] text-slate-500">
+              Pega un enlace de Google Drive u otro servicio. Se guarda junto al resultado.
+            </p>
+          </div>
+
+          {error && (
+            <p className="text-xs text-red-300 bg-red-900/40 border border-red-700 rounded-lg px-3 py-2">{error}</p>
           )}
           {success && (
-            <p className="text-xs text-green-300 bg-emerald-900/30 border border-emerald-700 rounded-lg px-3 py-2">
-              {success}
-            </p>
+            <p className="text-xs text-green-300 bg-emerald-900/30 border border-emerald-700 rounded-lg px-3 py-2">{success}</p>
           )}
 
-          <button
-            type="submit"
-            disabled={saving}
-            className="w-full bg-sky-600 hover:bg-sky-700 disabled:opacity-60 text-white rounded-xl py-2.5 text-sm font-semibold transition-colors"
-          >
+          <button type="submit" disabled={saving}
+            className="w-full bg-sky-600 hover:bg-sky-700 disabled:opacity-60 text-white rounded-xl py-2.5 text-sm font-semibold transition-colors">
             {saving ? "Guardando…" : existingResultId ? "Actualizar resultado" : "Guardar resultado"}
           </button>
         </form>
