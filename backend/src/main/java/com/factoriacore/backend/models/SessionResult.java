@@ -1,15 +1,12 @@
 package com.factoriacore.backend.models;
-
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
-
 import java.time.OffsetDateTime;
 
 @Entity
 @Table(name = "session_results")
 public class SessionResult {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -37,6 +34,9 @@ public class SessionResult {
     @Column(name = "pain_notes", length = 1000)
     private String painNotes;
 
+    @Column(name = "video_url", length = 500)
+    private String videoUrl;
+
     @Column(name = "recorded_at", nullable = false)
     private OffsetDateTime recordedAt;
 
@@ -56,7 +56,6 @@ public class SessionResult {
     public TrainingSession getSession() { return session; }
     @JsonProperty("session")
     public void setSession(TrainingSession session) { this.session = session; }
-
     public Long getSessionId() {
         return session != null ? session.getId() : null;
     }
@@ -65,7 +64,6 @@ public class SessionResult {
     public AthleteProfile getAthlete() { return athlete; }
     @JsonProperty("athlete")
     public void setAthlete(AthleteProfile athlete) { this.athlete = athlete; }
-
     public Long getAthleteId() {
         return athlete != null ? athlete.getId() : null;
     }
@@ -84,6 +82,9 @@ public class SessionResult {
 
     public String getPainNotes() { return painNotes; }
     public void setPainNotes(String painNotes) { this.painNotes = painNotes; }
+
+    public String getVideoUrl() { return videoUrl; }
+    public void setVideoUrl(String videoUrl) { this.videoUrl = videoUrl; }
 
     public OffsetDateTime getRecordedAt() { return recordedAt; }
     public void setRecordedAt(OffsetDateTime recordedAt) { this.recordedAt = recordedAt; }

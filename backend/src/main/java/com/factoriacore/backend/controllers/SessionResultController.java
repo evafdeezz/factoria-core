@@ -1,5 +1,4 @@
 package com.factoriacore.backend.controllers;
-
 import com.factoriacore.backend.models.AthleteProfile;
 import com.factoriacore.backend.models.SessionResult;
 import com.factoriacore.backend.models.TrainingSession;
@@ -7,7 +6,6 @@ import com.factoriacore.backend.repositories.AthleteProfileRepository;
 import com.factoriacore.backend.repositories.SessionResultRepository;
 import com.factoriacore.backend.repositories.TrainingSessionRepository;
 import org.springframework.web.bind.annotation.*;
-
 import java.util.List;
 import java.util.Optional;
 
@@ -65,6 +63,7 @@ public class SessionResultController {
         toSave.setComment(request.getComment());
         toSave.setPainFlag(request.isPainFlag());
         toSave.setPainNotes(request.getPainNotes());
+        toSave.setVideoUrl(request.getVideoUrl());
 
         return repository.save(toSave);
     }
