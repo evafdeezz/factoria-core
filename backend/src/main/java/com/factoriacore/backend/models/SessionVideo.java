@@ -5,22 +5,24 @@ import java.time.OffsetDateTime;
 
 @Entity
 @Table(name = "session_videos")
-public class SessionVideo
-{
+public class SessionVideo {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "session_id", nullable = false)
-    private Long sessionId;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "session_id", nullable = false)
+    private TrainingSession session;
 
-    @Column(name = "athlete_id", nullable = false)
-    private Long athleteId;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "athlete_id", nullable = false)
+    private AthleteProfile athlete;
 
     @Column(nullable = false)
-    private String url;          // enlace al vídeo (S3, Drive, Loom, etc.)
+    private String url;
 
-    private String type;         // SALIDA, VALLAS, TÉCNICA, etc.
+    private String type;
 
     @Column(columnDefinition = "TEXT")
     private String notes;
@@ -28,19 +30,16 @@ public class SessionVideo
     @Column(name = "created_at")
     private OffsetDateTime createdAt;
 
-    public SessionVideo() {
-    }
-
-    // getters y setters
+    public SessionVideo() {}
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 
-    public Long getSessionId() { return sessionId; }
-    public void setSessionId(Long sessionId) { this.sessionId = sessionId; }
+    public TrainingSession getSession() { return session; }
+    public void setSession(TrainingSession session) { this.session = session; }
 
-    public Long getAthleteId() { return athleteId; }
-    public void setAthleteId(Long athleteId) { this.athleteId = athleteId; }
+    public AthleteProfile getAthlete() { return athlete; }
+    public void setAthlete(AthleteProfile athlete) { this.athlete = athlete; }
 
     public String getUrl() { return url; }
     public void setUrl(String url) { this.url = url; }

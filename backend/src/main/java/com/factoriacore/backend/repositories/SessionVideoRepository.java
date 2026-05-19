@@ -7,14 +7,11 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 
 @Repository
-public interface SessionVideoRepository extends JpaRepository<SessionVideo, Long>
-{
-    // vídeos de una sesión
-    List<SessionVideo> findBySessionId(Long sessionId);
+public interface SessionVideoRepository extends JpaRepository<SessionVideo, Long> {
 
-    // vídeos de un atleta
-    List<SessionVideo> findByAthleteId(Long athleteId);
+    List<SessionVideo> findBySession_Id(Long sessionId);
 
-    // vídeos de un atleta en una sesión concreta
-    List<SessionVideo> findBySessionIdAndAthleteId(Long sessionId, Long athleteId);
+    List<SessionVideo> findByAthlete_Id(Long athleteId);
+
+    List<SessionVideo> findBySession_IdAndAthlete_Id(Long sessionId, Long athleteId);
 }
