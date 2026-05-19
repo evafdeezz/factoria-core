@@ -29,9 +29,6 @@ public class MenstrualCycle {
     @Column(name = "bleeding_days")
     private Integer bleedingDays;
 
-    @Column(name = "notes", length = 1000)
-    private String notes;
-
     @OneToMany(mappedBy = "cycle", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<MenstrualEntry> entries = new ArrayList<>();
 
@@ -55,9 +52,6 @@ public class MenstrualCycle {
 
     public Integer getBleedingDays() { return bleedingDays; }
     public void setBleedingDays(Integer bleedingDays) { this.bleedingDays = bleedingDays; }
-
-    public String getNotes() { return notes; }
-    public void setNotes(String notes) { this.notes = notes; }
 
     @JsonIgnore
     public List<MenstrualEntry> getEntries() { return entries; }

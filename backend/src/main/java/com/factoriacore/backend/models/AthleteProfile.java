@@ -54,9 +54,6 @@ public class AthleteProfile {
     @Column(name = "active", nullable = false)
     private boolean active = true;
 
-    @Column(name = "notes", length = 1000)
-    private String notes;
-
     @JsonIgnore
     @OneToMany(mappedBy = "athlete", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<MenstrualCycle> menstrualCycles = new ArrayList<>();
@@ -99,9 +96,6 @@ public class AthleteProfile {
 
     public boolean isActive() { return active; }
     public void setActive(boolean active) { this.active = active; }
-
-    public String getNotes() { return notes; }
-    public void setNotes(String notes) { this.notes = notes; }
 
     @JsonIgnore
     public List<MenstrualCycle> getMenstrualCycles() { return menstrualCycles; }

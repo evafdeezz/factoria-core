@@ -70,10 +70,6 @@ public class AthleteProfileController {
             profile.setDistanceProfile(incoming.getDistanceProfile());
         }
 
-        if (incoming.getNotes() != null) {
-            profile.setNotes(incoming.getNotes());
-        }
-
         profile.setMenstrualTrackingEnabled(incoming.isMenstrualTrackingEnabled());
 
         if (!incoming.isMenstrualTrackingEnabled()) {
