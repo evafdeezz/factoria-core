@@ -28,10 +28,28 @@ function getDaysInCycle(cycle: MenstrualCycleDto): string[] {
   for (let i = 0; i < length; i++) {
     const d = new Date(start);
     d.setDate(d.getDate() + i);
-    if (d > today) break;   // no mostrar días futuros
+    if (d > today) break;
     days.push(d.toISOString().slice(0, 10));
   }
   return days;
+}
+
+function calculateCycleDay(startDate: string, entryDate: string): number {
+  const start = new Date(startDate + "T00:00:00");
+  const entry = new Date(entryDate + "T00:00:00");
+  const diff = Math.round((entry.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+  return diff + 1;
+}
+
+function calculatePhase(
+  cycleDay: number,
+  bleedingDays: number,
+  cycleLength: number
+): "MENSTRUAL" | "FOLLICULAR" | "OVULATORY" | "LUTEAL" {
+  if (cycleDay <= bleedingDays) return "MENSTRUAL";
+  if (cycleDay <= 13)           return "FOLLICULAR";
+  if (cycleDay <= 15)           return "OVULATORY";
+  return "LUTEAL";
 }
 
 type EntryForm = {
@@ -55,7 +73,6 @@ export default function CycleDiaryPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Modal de edición
   const [editingDate, setEditingDate] = useState<string | null>(null);
   const [form, setForm] = useState<EntryForm>(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
@@ -88,11 +105,20 @@ export default function CycleDiaryPage() {
   }
 
   async function handleSave() {
-    if (!athleteId || !editingDate) return;
+    if (!athleteId || !editingDate || !cycle) return;
     setSaving(true);
     try {
+      const cycleDay = calculateCycleDay(cycle.startDate, editingDate);
+      const estimatedPhase = calculatePhase(
+        cycleDay,
+        cycle.bleedingDays ?? 5,
+        cycle.cycleLength ?? 28
+      );
+
       const saved = await saveCycleEntry(athleteId, cycleId, {
         date: editingDate,
+        cycleDay,
+        estimatedPhase,
         painLevel: form.painLevel || null,
         fatigueLevel: form.fatigueLevel || null,
         flowLevel: form.flowLevel || null,
@@ -153,6 +179,7 @@ export default function CycleDiaryPage() {
           {days.map((date, i) => {
             const entry = entryByDate[date];
             const hasData = !!entry;
+            const phase = entry?.estimatedPhase;
             return (
               <button
                 key={date}
@@ -171,7 +198,10 @@ export default function CycleDiaryPage() {
                     </p>
                     <p className="text-sm font-medium text-slate-100">{formatDate(date)}</p>
                     {hasData ? (
-                      <div className="flex gap-3 mt-1 text-[11px] text-slate-300">
+                      <div className="flex flex-wrap gap-3 mt-1 text-[11px] text-slate-300">
+                        {phase && (
+                          <span className="text-sky-400">{PHASE_LABELS[phase] ?? phase}</span>
+                        )}
                         {entry.painLevel ? <span>Dolor {entry.painLevel}/10</span> : null}
                         {entry.fatigueLevel ? <span>Fatiga {entry.fatigueLevel}/10</span> : null}
                         {entry.mood ? <span>Ánimo {entry.mood}/10</span> : null}
@@ -198,6 +228,15 @@ export default function CycleDiaryPage() {
               <h2 className="text-base font-semibold text-slate-50">
                 {formatDate(editingDate)}
               </h2>
+              {cycle && (
+                <p className="text-xs text-sky-400 mt-0.5">
+                  {PHASE_LABELS[calculatePhase(
+                    calculateCycleDay(cycle.startDate, editingDate),
+                    cycle.bleedingDays ?? 5,
+                    cycle.cycleLength ?? 28
+                  )]}
+                </p>
+              )}
               <p className="text-xs text-slate-400 mt-0.5">
                 Anota cómo te encontraste este día. 0 = sin datos.
               </p>
