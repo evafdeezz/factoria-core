@@ -1,0 +1,9 @@
+factoriacore.duckdns.org {
+    reverse_proxy /api/* factoria-backend:8085
+    reverse_proxy /oauth2/* factoria-backend:8085
+    reverse_proxy /login/* factoria-backend:8085
+    reverse_proxy /webhooks/* factoria-n8n:5678
+    reverse_proxy /webhook/* factoria-n8n:5678
+    reverse_proxy /webhook-test/* factoria-n8n:5678
+    reverse_proxy factoria-frontend:3000
+}
