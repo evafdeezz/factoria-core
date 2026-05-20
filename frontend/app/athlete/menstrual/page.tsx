@@ -21,7 +21,6 @@ function getPhaseForDay(cycleDay: number, bleedingDays: number): Phase {
   return "LUTEAL";
 }
 
-// ── Solo franja de color, no fondo completo ──────────────────────────────────
 const PHASE_BAR: Record<Phase, string> = {
   MENSTRUAL:  "bg-red-400",
   FOLLICULAR: "bg-yellow-400",
@@ -124,17 +123,33 @@ export default function MenstrualHistoryPage() {
     return map;
   }, [cycles]);
 
-  // ── FIX: ciclos ordenados de más reciente a más antiguo
-  // Al iterar, el más reciente escribe primero y los antiguos no sobreescriben
+  // ── FIX: ciclos más recientes tienen prioridad, y se extiende el ciclo
+  // anterior hasta el día antes del siguiente para no dejar huecos
   const datePhaseMap = useMemo(() => {
     const map: Record<string, Phase> = {};
-    // cycles ya viene ordenado de más reciente a más antiguo
-    for (const cycle of cycles) {
+
+    for (let ci = 0; ci < cycles.length; ci++) {
+      const cycle    = cycles[ci];
       const length   = cycle.cycleLength ?? 28;
       const bleeding = cycle.bleedingDays ?? 5;
-      for (let i = 0; i < length; i++) {
+
+      // Si hay un ciclo más reciente, extender este hasta el día anterior
+      const nextCycleStart = ci > 0 ? cycles[ci - 1].startDate : null;
+
+      let daysToRender = length;
+      if (nextCycleStart) {
+        const cycleStart = new Date(cycle.startDate + "T00:00:00");
+        const nextStart  = new Date(nextCycleStart  + "T00:00:00");
+        const gap = Math.round(
+          (nextStart.getTime() - cycleStart.getTime()) / (1000 * 60 * 60 * 24)
+        );
+        // Extender hasta justo antes del siguiente ciclo
+        daysToRender = Math.max(gap, length);
+      }
+
+      for (let i = 0; i < daysToRender; i++) {
         const date = addDays(cycle.startDate, i);
-        // Solo escribir si no hay ya una fase (el más reciente tiene prioridad)
+        // El más reciente ya habrá escrito sus días, no sobreescribir
         if (!(date in map)) {
           map[date] = getPhaseForDay(i + 1, bleeding);
         }
@@ -247,17 +262,18 @@ export default function MenstrualHistoryPage() {
                   type="button"
                   onClick={() => setSelectedDate(isSelected ? null : key)}
                   className={[
-                    // ── sin fondo de color, solo border si seleccionado ──────
                     "relative flex flex-col items-center justify-start pt-1 pb-1 rounded-xl mx-0.5 min-h-[3rem] transition-all duration-150",
                     isSelected
                       ? "bg-rose-600/20 border border-rose-500/60"
-                      : "border border-transparent hover:bg-slate-800/30",
+                      : phase === "MENSTRUAL"
+                      ? "bg-red-500/20 border border-red-500/30 hover:bg-red-500/30"
+                      : "border border-transparent hover:bg-slate-800/20",
                     todayCell && !isSelected ? "ring-1 ring-sky-500/60" : "",
                   ].join(" ")}
                 >
                   <span className={[
                     "text-xs font-medium w-6 h-6 flex items-center justify-center rounded-full",
-                    todayCell   ? "bg-sky-500 text-white font-bold"
+                    todayCell    ? "bg-sky-500 text-white font-bold"
                       : isSelected ? "text-rose-300"
                       : phase      ? "text-slate-100"
                       : "text-slate-500",
@@ -265,8 +281,8 @@ export default function MenstrualHistoryPage() {
                     {day}
                   </span>
 
-                  {/* Franja de color fina en vez de fondo completo */}
-                  {phase && !isSelected && (
+                  {/* Franja fina solo para fases NO menstruales */}
+                  {phase && phase !== "MENSTRUAL" && !isSelected && (
                     <div className={`w-4 h-0.5 rounded-full mt-0.5 ${PHASE_BAR[phase]}`} />
                   )}
 
