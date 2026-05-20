@@ -31,13 +31,21 @@ export default function AthleteHomePage() {
   const { user, loading: userLoading, setUser } = useCurrentUser();
 
   const [today] = useState(() => formatDate(new Date()));
-  const [wellness,          setWellness]          = useState<WellnessEntryDto | null>(null);
-  const [sessions,          setSessions]          = useState<TrainingSessionDto[]>([]);
-  const [personalSessions,  setPersonalSessions]  = useState<PersonalSessionDto[]>([]);
-  const [loading,           setLoading]           = useState(true);
-  const [group,             setGroup]             = useState<GroupDto | null>(null);
-  const [logoutLoading,     setLogoutLoading]     = useState(false);
-  const [error,             setError]             = useState<string | null>(null);
+  const [wellness,         setWellness]         = useState<WellnessEntryDto | null>(null);
+  const [sessions,         setSessions]         = useState<TrainingSessionDto[]>([]);
+  const [personalSessions, setPersonalSessions] = useState<PersonalSessionDto[]>([]);
+  const [loading,          setLoading]          = useState(true);
+  const [group,            setGroup]            = useState<GroupDto | null>(null);
+  const [logoutLoading,    setLogoutLoading]    = useState(false);
+  const [error,            setError]            = useState<string | null>(null);
+
+  // Modal nueva sesión personal
+  const [showNewModal, setShowNewModal] = useState(false);
+  const [newForm, setNewForm] = useState<{
+    title: string; type: "TRAINING" | "COMPETITION"; notes: string;
+  }>({ title: "", type: "TRAINING", notes: "" });
+  const [savingNew, setSavingNew] = useState(false);
+  const [newError,  setNewError]  = useState<string | null>(null);
 
   useEffect(() => {
     if (userLoading) return;
@@ -48,7 +56,6 @@ export default function AthleteHomePage() {
   useEffect(() => {
     if (userLoading) return;
     if (!user || user.role !== "ATHLETE") { setLoading(false); return; }
-
     const athleteId = user.athleteProfileId;
     if (!athleteId) { setLoading(false); return; }
 
@@ -61,10 +68,10 @@ export default function AthleteHomePage() {
       let personalData: PersonalSessionDto[] = [];
 
       try { wellnessData = await getWellnessForDate(athleteId!, today); }
-      catch (err) { console.error("Error cargando wellness:", err); hasTechnicalError = true; }
+      catch { hasTechnicalError = true; }
 
       try { sessionsData = await getAthleteTodaySessions(athleteId!); }
-      catch (err) { console.error("Error cargando sesiones de hoy:", err); hasTechnicalError = true; }
+      catch { hasTechnicalError = true; }
 
       try {
         const res = await fetch(
@@ -75,7 +82,7 @@ export default function AthleteHomePage() {
           const all: PersonalSessionDto[] = await res.json();
           personalData = all.filter((p) => p.date === today);
         }
-      } catch (err) { console.error("Error cargando sesiones personales:", err); }
+      } catch { /* no bloqueamos */ }
 
       let groupData: GroupDto | null = null;
       try {
@@ -84,7 +91,7 @@ export default function AthleteHomePage() {
         if (active.length > 0 && active[0].groupId) {
           groupData = await getGroup(active[0].groupId);
         }
-      } catch (err) { console.error("Error cargando grupo:", err); }
+      } catch { /* no bloqueamos */ }
 
       setWellness(wellnessData);
       setSessions(sessionsData);
@@ -97,13 +104,43 @@ export default function AthleteHomePage() {
     void load();
   }, [user, userLoading, today]);
 
+  async function handleCreatePersonal() {
+    if (!user?.athleteProfileId || !newForm.title.trim()) {
+      setNewError("El título es obligatorio.");
+      return;
+    }
+    setSavingNew(true);
+    setNewError(null);
+    try {
+      const res = await fetch(`${API_BASE_URL}/personal-sessions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          athleteId: user.athleteProfileId,
+          date: today,
+          title: newForm.title.trim(),
+          type: newForm.type,
+          notes: newForm.notes || null,
+        }),
+      });
+      if (!res.ok) throw new Error();
+      const created: PersonalSessionDto = await res.json();
+      setPersonalSessions((prev) => [...prev, created]);
+      setShowNewModal(false);
+      setNewForm({ title: "", type: "TRAINING", notes: "" });
+    } catch {
+      setNewError("No se pudo guardar la sesión.");
+    } finally {
+      setSavingNew(false);
+    }
+  }
+
   const handleLogout = async () => {
     try {
       setLogoutLoading(true);
       await fetch(`${API_BASE_URL}/auth/logout`, { method: "POST", credentials: "include" });
-    } catch (err) {
-      console.error("Error al cerrar sesión", err);
-    } finally {
+    } catch { /* ignorar */ } finally {
       setUser(null);
       router.push("/login");
       setLogoutLoading(false);
@@ -228,7 +265,7 @@ export default function AthleteHomePage() {
               <p className="text-[11px] text-slate-400">Lo que tienes planificado</p>
             </div>
             <Link href="/athlete/sessions" className="text-[11px] text-sky-300 hover:text-sky-200">
-              Ver historial →
+              Ver calendario →
             </Link>
           </div>
 
@@ -236,8 +273,6 @@ export default function AthleteHomePage() {
             <p className="text-sm text-slate-400">Hoy no tienes sesiones asignadas.</p>
           ) : (
             <div className="space-y-2">
-
-              {/* Sesiones del grupo */}
               {sessions.map((session) => (
                 <div key={session.id}
                   className="border border-slate-800 rounded-xl px-3 py-2.5 flex items-center justify-between text-sm bg-slate-950/40">
@@ -252,7 +287,6 @@ export default function AthleteHomePage() {
                 </div>
               ))}
 
-              {/* Sesiones personales */}
               {personalSessions.map((p) => (
                 <div key={p.id}
                   className="border border-slate-800 rounded-xl px-3 py-2.5 flex items-center justify-between text-sm bg-slate-950/40">
@@ -268,14 +302,21 @@ export default function AthleteHomePage() {
                     </div>
                   </div>
                   {p.notes && (
-                    <p className="text-[10px] text-slate-500 italic ml-3 text-right max-w-[40%]">
-                      {p.notes}
-                    </p>
+                    <p className="text-[10px] text-slate-500 italic ml-3 text-right max-w-[40%]">{p.notes}</p>
                   )}
                 </div>
               ))}
             </div>
           )}
+
+          {/* Botón añadir sesión propia */}
+          <button
+            type="button"
+            onClick={() => { setNewForm({ title: "", type: "TRAINING", notes: "" }); setNewError(null); setShowNewModal(true); }}
+            className="w-full border border-dashed border-slate-700 hover:border-slate-500 rounded-xl py-2 text-[11px] text-slate-400 hover:text-slate-200 transition-colors"
+          >
+            + Añadir sesión propia hoy
+          </button>
         </section>
 
         {/* Grupo */}
@@ -307,6 +348,74 @@ export default function AthleteHomePage() {
         </section>
 
       </div>
+
+      {/* Modal nueva sesión personal */}
+      {showNewModal && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm px-4 pb-4">
+          <div className="bg-slate-900 border border-slate-700 rounded-2xl p-5 w-full max-w-sm space-y-4 shadow-2xl">
+            <div>
+              <h2 className="text-base font-semibold text-slate-50">Nueva sesión propia</h2>
+              <p className="text-xs text-slate-400 mt-0.5">{today}</p>
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-medium text-slate-300 mb-1">Título *</label>
+              <input
+                type="text"
+                value={newForm.title}
+                onChange={(e) => setNewForm((f) => ({ ...f, title: e.target.value }))}
+                placeholder="Ej: Cross, Gym, Competición..."
+                className="w-full border border-slate-700 rounded-lg bg-slate-950/40 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none focus:border-sky-500/60"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-medium text-slate-300 mb-1">Tipo</label>
+              <div className="flex gap-2">
+                {(["TRAINING", "COMPETITION"] as const).map((t) => (
+                  <button key={t} type="button"
+                    onClick={() => setNewForm((f) => ({ ...f, type: t }))}
+                    className={[
+                      "flex-1 py-2 rounded-lg text-xs font-semibold border transition-colors",
+                      newForm.type === t
+                        ? t === "COMPETITION"
+                          ? "bg-yellow-500/20 border-yellow-400 text-yellow-300"
+                          : "bg-amber-500/20 border-amber-400 text-amber-300"
+                        : "border-slate-700 text-slate-400 hover:border-slate-500",
+                    ].join(" ")}
+                  >
+                    {t === "COMPETITION" ? "🏆 Competición" : "🏃 Entrenamiento"}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-medium text-slate-300 mb-1">Notas (opcional)</label>
+              <textarea
+                value={newForm.notes}
+                onChange={(e) => setNewForm((f) => ({ ...f, notes: e.target.value }))}
+                rows={2}
+                placeholder="60m — 7.45, sensaciones..."
+                className="w-full border border-slate-700 rounded-lg bg-slate-950/40 px-3 py-2 text-sm text-slate-100 resize-none placeholder:text-slate-600"
+              />
+            </div>
+
+            {newError && <p className="text-xs text-red-300">{newError}</p>}
+
+            <div className="flex gap-2 pt-1">
+              <button type="button" onClick={() => setShowNewModal(false)}
+                className="flex-1 border border-slate-700 rounded-lg py-2 text-sm text-slate-300 hover:bg-slate-800">
+                Cancelar
+              </button>
+              <button type="button" onClick={handleCreatePersonal} disabled={savingNew}
+                className="flex-1 bg-sky-600 hover:bg-sky-700 text-white rounded-lg py-2 text-sm font-semibold disabled:opacity-60">
+                {savingNew ? "Guardando..." : "Guardar"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

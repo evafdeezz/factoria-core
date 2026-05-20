@@ -13,7 +13,6 @@ const MONTHS_ES = [
   "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
 ];
 
-// ─── Tipos sesión personal (provisional hasta tener el lib) ──────────────────
 interface PersonalSessionDto {
   id: number;
   athleteId: number;
@@ -28,8 +27,7 @@ const API_BASE_URL =
 
 async function getPersonalSessions(athleteId: number): Promise<PersonalSessionDto[]> {
   const res = await fetch(`${API_BASE_URL}/personal-sessions/athlete/${athleteId}`, {
-    cache: "no-store",
-    credentials: "include",
+    cache: "no-store", credentials: "include",
   });
   if (!res.ok) return [];
   return res.json();
@@ -37,8 +35,7 @@ async function getPersonalSessions(athleteId: number): Promise<PersonalSessionDt
 
 async function deletePersonalSession(id: number): Promise<void> {
   await fetch(`${API_BASE_URL}/personal-sessions/${id}`, {
-    method: "DELETE",
-    credentials: "include",
+    method: "DELETE", credentials: "include",
   });
 }
 
@@ -59,8 +56,6 @@ async function createPersonalSession(data: {
   return res.json();
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
 function buildCalendarDays(year: number, month: number): (number | null)[] {
   const firstDay = new Date(year, month, 1).getDay();
   const startOffset = (firstDay + 6) % 7;
@@ -71,8 +66,6 @@ function buildCalendarDays(year: number, month: number): (number | null)[] {
   while (cells.length % 7 !== 0) cells.push(null);
   return cells;
 }
-
-// ─── Componente principal ─────────────────────────────────────────────────────
 
 function AthleteSessionsCalendar() {
   const { user } = useCurrentUser();
@@ -93,13 +86,9 @@ function AthleteSessionsCalendar() {
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState<string | null>(null);
 
-  // Modal nueva sesión personal
-  const [showNewModal, setShowNewModal]   = useState(false);
+  const [showNewModal, setShowNewModal] = useState(false);
   const [newForm, setNewForm] = useState<{
-    title: string;
-    type: "TRAINING" | "COMPETITION";
-    notes: string;
-    date: string;
+    title: string; type: "TRAINING" | "COMPETITION"; notes: string; date: string;
   }>({ title: "", type: "TRAINING", notes: "", date: "" });
   const [savingNew, setSavingNew] = useState(false);
   const [newError,  setNewError]  = useState<string | null>(null);
@@ -129,7 +118,6 @@ function AthleteSessionsCalendar() {
     void load();
   }, [athleteId]);
 
-  // Índices por fecha
   const sessionsByDate: Record<string, TrainingSessionDto[]> = {};
   for (const s of sessions) {
     if (!sessionsByDate[s.date]) sessionsByDate[s.date] = [];
@@ -142,9 +130,7 @@ function AthleteSessionsCalendar() {
     personalByDate[p.date].push(p);
   }
 
-  // IDs de sesiones con resultado registrado
   const sessionIdsWithResult = new Set(results.map((r) => r.sessionId));
-
   const calendarDays = buildCalendarDays(viewYear, viewMonth);
 
   function dateKey(day: number) {
@@ -206,7 +192,6 @@ function AthleteSessionsCalendar() {
     setPersonalSessions((prev) => prev.filter((p) => p.id !== id));
   }
 
-  // ── Guards ────────────────────────────────────────────────────────────────
   if (!user) return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-sky-900 text-slate-100">
       <Link href="/login" className="text-xs text-sky-300 underline">Ir al login →</Link>
@@ -223,7 +208,6 @@ function AthleteSessionsCalendar() {
     </div>
   );
 
-  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-sky-900 text-slate-50 px-4 py-6">
       <div className="max-w-3xl mx-auto space-y-5">
@@ -235,7 +219,7 @@ function AthleteSessionsCalendar() {
             <h1 className="text-2xl font-semibold">Historial de sesiones</h1>
           </div>
           <Link href="/athlete" className="text-xs text-slate-300 hover:text-slate-100 underline">
-            Volver al día
+            Volver al día →
           </Link>
         </div>
 
@@ -253,7 +237,6 @@ function AthleteSessionsCalendar() {
 
         {/* Calendario */}
         <div className="bg-slate-900/60 border border-slate-800 rounded-2xl shadow-xl p-4">
-
           <div className="flex items-center justify-between mb-4">
             <button onClick={prevMonth}
               className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-700/60 text-slate-300 transition-colors">‹</button>
@@ -274,27 +257,24 @@ function AthleteSessionsCalendar() {
             {calendarDays.map((day, idx) => {
               if (day === null) return <div key={`empty-${idx}`} />;
 
-              const key = dateKey(day);
-              const daySessions  = sessionsByDate[key] ?? [];
-              const dayPersonal  = personalByDate[key] ?? [];
-              const hasGroup     = daySessions.length > 0;
-              const hasPersonal  = dayPersonal.length > 0;
-              const hasAnything  = hasGroup || hasPersonal;
-              const isSelected   = selectedDate === key;
-              const _isToday     = isToday(day);
-
-              // ¿Alguna sesión del grupo tiene resultado?
-              const anyResult = daySessions.some((s) => sessionIdsWithResult.has(s.id));
+              const key         = dateKey(day);
+              const daySessions = sessionsByDate[key] ?? [];
+              const dayPersonal = personalByDate[key] ?? [];
+              const hasAnything = daySessions.length > 0 || dayPersonal.length > 0;
+              const isSelected  = selectedDate === key;
+              const _isToday    = isToday(day);
 
               return (
                 <button
                   key={key}
-                  onClick={() => hasAnything ? setSelectedDate(isSelected ? null : key) : undefined}
+                  // ← CAMBIO 1: todos los días son clicables
+                  onClick={() => setSelectedDate(isSelected ? null : key)}
                   className={[
-                    "relative flex flex-col items-center justify-start pt-1 pb-1 rounded-xl mx-0.5 min-h-[3rem] transition-all duration-150",
+                    "relative flex flex-col items-center justify-start pt-1 pb-1 rounded-xl mx-0.5 min-h-[3rem] transition-all duration-150 cursor-pointer",
                     isSelected ? "bg-sky-600/30 border border-sky-500/60"
-                      : hasAnything ? "hover:bg-slate-700/50 border border-transparent hover:border-slate-600/50 cursor-pointer"
-                      : "border border-transparent cursor-default opacity-60",
+                      : hasAnything ? "hover:bg-slate-700/50 border border-transparent hover:border-slate-600/50"
+                      // ← CAMBIO 2: sin cursor-default, solo opacity
+                      : "border border-transparent opacity-40",
                     _isToday && !isSelected ? "border border-sky-500/40" : "",
                   ].join(" ")}
                 >
@@ -308,7 +288,6 @@ function AthleteSessionsCalendar() {
                     {day}
                   </span>
 
-                  {/* Puntos de colores */}
                   <div className="flex gap-0.5 mt-0.5 flex-wrap justify-center px-1">
                     {daySessions.slice(0, 2).map((s, i) => (
                       <span key={i} className={`w-1.5 h-1.5 rounded-full ${
@@ -346,7 +325,6 @@ function AthleteSessionsCalendar() {
             </div>
 
             <div className="space-y-2">
-              {/* Sesiones del grupo */}
               {(sessionsByDate[selectedDate] ?? []).map((session) => {
                 const hasResult = sessionIdsWithResult.has(session.id);
                 return (
@@ -369,7 +347,6 @@ function AthleteSessionsCalendar() {
                 );
               })}
 
-              {/* Sesiones personales */}
               {(personalByDate[selectedDate] ?? []).map((p) => (
                 <div key={p.id}
                   className="flex items-center justify-between rounded-xl bg-slate-950/40 border border-slate-800 px-3 py-2 text-xs">
@@ -394,7 +371,7 @@ function AthleteSessionsCalendar() {
 
               {(sessionsByDate[selectedDate] ?? []).length === 0 &&
                (personalByDate[selectedDate] ?? []).length === 0 && (
-                <p className="text-xs text-slate-500">Sin sesiones este día.</p>
+                <p className="text-xs text-slate-500">Sin sesiones este día. Puedes añadir una propia.</p>
               )}
             </div>
           </div>
@@ -429,9 +406,7 @@ function AthleteSessionsCalendar() {
               <label className="block text-[11px] font-medium text-slate-300 mb-1">Tipo</label>
               <div className="flex gap-2">
                 {(["TRAINING", "COMPETITION"] as const).map((t) => (
-                  <button
-                    key={t}
-                    type="button"
+                  <button key={t} type="button"
                     onClick={() => setNewForm((f) => ({ ...f, type: t }))}
                     className={[
                       "flex-1 py-2 rounded-lg text-xs font-semibold border transition-colors",
