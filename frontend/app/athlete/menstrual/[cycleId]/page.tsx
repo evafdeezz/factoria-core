@@ -52,11 +52,7 @@ function calculatePhase(cycleDay: number, bleedingDays: number, cycleLength: num
 }
 
 type EntryForm = {
-  painLevel: number;
-  fatigueLevel: number;
-  flowLevel: number;
-  mood: number;
-  notes: string;
+  painLevel: number; fatigueLevel: number; flowLevel: number; mood: number; notes: string;
 };
 
 const EMPTY_FORM: EntryForm = { painLevel: 0, fatigueLevel: 0, flowLevel: 0, mood: 0, notes: "" };
@@ -67,10 +63,11 @@ export default function CycleDiaryPage() {
   const cycleId = Number(params.cycleId);
   const { user } = useCurrentUser();
 
-  const [cycle,   setCycle]   = useState<MenstrualCycleDto | null>(null);
-  const [entries, setEntries] = useState<MenstrualEntryDto[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error,   setError]   = useState<string | null>(null);
+  const [allCycles, setAllCycles] = useState<MenstrualCycleDto[]>([]);
+  const [cycle,     setCycle]     = useState<MenstrualCycleDto | null>(null);
+  const [entries,   setEntries]   = useState<MenstrualEntryDto[]>([]);
+  const [loading,   setLoading]   = useState(true);
+  const [error,     setError]     = useState<string | null>(null);
 
   const [editingDate, setEditingDate] = useState<string | null>(null);
   const [form,        setForm]        = useState<EntryForm>(EMPTY_FORM);
@@ -84,11 +81,23 @@ export default function CycleDiaryPage() {
       getCycleHistory(athleteId),
       getCycleEntries(athleteId, cycleId),
     ]).then(([history, ents]) => {
-      setCycle(history.find((c) => c.id === cycleId) ?? null);
+      // ordenar de más reciente a más antiguo
+      const sorted = [...history].sort(
+        (a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime()
+      );
+      setAllCycles(sorted);
+      setCycle(sorted.find((c) => c.id === cycleId) ?? null);
       setEntries(ents);
     }).catch(() => setError("No se han podido cargar los datos."))
       .finally(() => setLoading(false));
   }, [athleteId, cycleId]);
+
+  // Índice del ciclo actual en la lista ordenada (0 = más reciente)
+  const currentIndex = allCycles.findIndex(c => c.id === cycleId);
+  const prevCycle    = currentIndex >= 0 && currentIndex < allCycles.length - 1
+    ? allCycles[currentIndex + 1] : null; // más antiguo
+  const nextCycle    = currentIndex > 0
+    ? allCycles[currentIndex - 1] : null; // más reciente
 
   function openEdit(date: string) {
     const existing = entries.find((e) => e.date === date);
@@ -106,7 +115,7 @@ export default function CycleDiaryPage() {
     if (!athleteId || !editingDate || !cycle) return;
     setSaving(true);
     try {
-      const cycleDay      = calculateCycleDay(cycle.startDate, editingDate);
+      const cycleDay       = calculateCycleDay(cycle.startDate, editingDate);
       const estimatedPhase = calculatePhase(cycleDay, cycle.bleedingDays ?? 5, cycle.cycleLength ?? 28);
 
       const saved = await saveCycleEntry(athleteId, cycleId, {
@@ -122,8 +131,7 @@ export default function CycleDiaryPage() {
         return idx >= 0 ? prev.with(idx, saved) : [...prev, saved];
       });
       setEditingDate(null);
-      // Volver a la pantalla principal tras guardar
-      router.push("/athlete");
+      // No salir de la página, quedarse en el diario
     } catch {
       setError("No se ha podido guardar la entrada.");
     } finally {
@@ -140,7 +148,6 @@ export default function CycleDiaryPage() {
   const days = cycle ? getDaysInCycle(cycle) : [];
   const entryByDate = Object.fromEntries(entries.map((e) => [e.date, e]));
 
-  // Agrupar días por fase
   const byPhase: Record<Phase, { date: string; dayNum: number }[]> = {
     MENSTRUAL: [], FOLLICULAR: [], OVULATORY: [], LUTEAL: [],
   };
@@ -154,7 +161,7 @@ export default function CycleDiaryPage() {
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-sky-900 text-slate-50 px-4 py-6">
       <div className="max-w-xl mx-auto space-y-5">
 
-        {/* Header con volver a la derecha */}
+        {/* Header */}
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-1">
             <p className="text-[10px] tracking-[0.2em] uppercase text-sky-300">Diario del ciclo</p>
@@ -163,9 +170,38 @@ export default function CycleDiaryPage() {
             </h1>
             <p className="text-xs text-slate-400">Toca un día para añadir o editar cómo te encontraste.</p>
           </div>
-          <button type="button" onClick={() => router.push("/athlete/menstrual")}
+          <button type="button" onClick={() => router.push("/athlete")}
             className="text-[11px] text-slate-300 hover:text-slate-100 underline flex-shrink-0">
-            Historial →
+            Volver al panel →
+          </button>
+        </div>
+
+        {/* Navegación entre ciclos */}
+        <div className="flex items-center justify-between bg-slate-900/60 border border-slate-800 rounded-xl px-4 py-2.5">
+          <button
+            type="button"
+            onClick={() => prevCycle && router.push(`/athlete/menstrual/${prevCycle.id}`)}
+            disabled={!prevCycle}
+            className="text-[11px] text-slate-300 hover:text-slate-100 disabled:opacity-30 disabled:cursor-default flex items-center gap-1"
+          >
+            ← {prevCycle ? formatDate(prevCycle.startDate) : "Ciclo anterior"}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => router.push("/athlete/menstrual")}
+            className="text-[11px] text-sky-400 hover:text-sky-300"
+          >
+            Ver todos
+          </button>
+
+          <button
+            type="button"
+            onClick={() => nextCycle && router.push(`/athlete/menstrual/${nextCycle.id}`)}
+            disabled={!nextCycle}
+            className="text-[11px] text-slate-300 hover:text-slate-100 disabled:opacity-30 disabled:cursor-default flex items-center gap-1"
+          >
+            {nextCycle ? formatDate(nextCycle.startDate) : "Ciclo siguiente"} →
           </button>
         </div>
 
@@ -184,7 +220,6 @@ export default function CycleDiaryPage() {
           const meta = PHASE_META[phase];
           return (
             <div key={phase} className={`border rounded-2xl overflow-hidden ${meta.border}`}>
-              {/* Cabecera de fase */}
               <div className={`px-4 py-2.5 ${meta.bg} flex items-center gap-2`}>
                 <span className="text-base">{meta.emoji}</span>
                 <p className={`text-xs font-semibold uppercase tracking-wider ${meta.text}`}>
@@ -194,19 +229,13 @@ export default function CycleDiaryPage() {
                   {phaseDays.length} día{phaseDays.length !== 1 ? "s" : ""}
                 </span>
               </div>
-
-              {/* Días de la fase */}
               <div className="divide-y divide-slate-800/60">
                 {phaseDays.map(({ date, dayNum }) => {
                   const entry   = entryByDate[date];
                   const hasData = !!entry;
                   return (
-                    <button
-                      key={date}
-                      type="button"
-                      onClick={() => openEdit(date)}
-                      className="w-full text-left px-4 py-3 hover:bg-slate-800/40 transition-colors"
-                    >
+                    <button key={date} type="button" onClick={() => openEdit(date)}
+                      className="w-full text-left px-4 py-3 hover:bg-slate-800/40 transition-colors">
                       <div className="flex items-center justify-between">
                         <div>
                           <div className="flex items-center gap-2">
@@ -237,7 +266,7 @@ export default function CycleDiaryPage() {
         })}
       </div>
 
-      {/* Modal de edición */}
+      {/* Modal */}
       {editingDate && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm px-4 pb-4">
           <div className="bg-slate-900 border border-slate-700 rounded-2xl p-5 w-full max-w-sm space-y-4 shadow-2xl">
@@ -246,18 +275,15 @@ export default function CycleDiaryPage() {
               {cycle && (
                 <p className={`text-xs mt-0.5 ${PHASE_META[calculatePhase(
                   calculateCycleDay(cycle.startDate, editingDate),
-                  cycle.bleedingDays ?? 5,
-                  cycle.cycleLength ?? 28
+                  cycle.bleedingDays ?? 5, cycle.cycleLength ?? 28
                 )].text}`}>
                   {PHASE_META[calculatePhase(
                     calculateCycleDay(cycle.startDate, editingDate),
-                    cycle.bleedingDays ?? 5,
-                    cycle.cycleLength ?? 28
+                    cycle.bleedingDays ?? 5, cycle.cycleLength ?? 28
                   )].emoji}{" "}
                   {PHASE_META[calculatePhase(
                     calculateCycleDay(cycle.startDate, editingDate),
-                    cycle.bleedingDays ?? 5,
-                    cycle.cycleLength ?? 28
+                    cycle.bleedingDays ?? 5, cycle.cycleLength ?? 28
                   )].label}
                 </p>
               )}

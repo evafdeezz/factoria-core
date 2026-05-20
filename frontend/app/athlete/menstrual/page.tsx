@@ -12,7 +12,6 @@ const MONTHS_ES = [
   "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
 ];
 
-// ─── Fase por día del ciclo ───────────────────────────────────────────────────
 type Phase = "MENSTRUAL" | "FOLLICULAR" | "OVULATORY" | "LUTEAL";
 
 function getPhaseForDay(cycleDay: number, bleedingDays: number): Phase {
@@ -22,14 +21,8 @@ function getPhaseForDay(cycleDay: number, bleedingDays: number): Phase {
   return "LUTEAL";
 }
 
-const PHASE_BG: Record<Phase, string> = {
-  MENSTRUAL:  "bg-red-500/20 border border-red-500/30",
-  FOLLICULAR: "bg-yellow-500/15 border border-yellow-500/20",
-  OVULATORY:  "bg-emerald-500/20 border border-emerald-500/30",
-  LUTEAL:     "bg-blue-500/15 border border-blue-500/20",
-};
-
-const PHASE_DOT: Record<Phase, string> = {
+// ── Solo franja de color, no fondo completo ──────────────────────────────────
+const PHASE_BAR: Record<Phase, string> = {
   MENSTRUAL:  "bg-red-400",
   FOLLICULAR: "bg-yellow-400",
   OVULATORY:  "bg-emerald-400",
@@ -81,14 +74,14 @@ export default function MenstrualHistoryPage() {
   const router = useRouter();
   const { user, loading: userLoading } = useCurrentUser();
 
-  const [cycles,   setCycles]   = useState<MenstrualCycleDto[]>([]);
-  const [loading,  setLoading]  = useState(true);
-  const [error,    setError]    = useState<string | null>(null);
+  const [cycles,  setCycles]  = useState<MenstrualCycleDto[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error,   setError]   = useState<string | null>(null);
 
   const today = new Date();
-  const [viewYear,      setViewYear]      = useState(today.getFullYear());
-  const [viewMonth,     setViewMonth]     = useState(today.getMonth());
-  const [selectedDate,  setSelectedDate]  = useState<string | null>(null);
+  const [viewYear,     setViewYear]     = useState(today.getFullYear());
+  const [viewMonth,    setViewMonth]    = useState(today.getMonth());
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
   useEffect(() => {
     if (userLoading) return;
@@ -105,8 +98,6 @@ export default function MenstrualHistoryPage() {
           (a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime()
         );
         setCycles(sorted);
-
-        // ── Siempre navegar al ciclo más reciente al cargar ──────────────────
         if (sorted.length > 0) {
           const latest = sorted[0];
           const anchorDate = new Date(latest.startDate + "T00:00:00");
@@ -121,11 +112,9 @@ export default function MenstrualHistoryPage() {
         setLoading(false);
       }
     }
-
     void loadCycles();
   }, [user, userLoading]);
 
-  // ── Mapa fecha → ciclo que empieza ese día ────────────────────────────────
   const cyclesByDate = useMemo(() => {
     const map: Record<string, MenstrualCycleDto[]> = {};
     for (const cycle of cycles) {
@@ -135,17 +124,18 @@ export default function MenstrualHistoryPage() {
     return map;
   }, [cycles]);
 
-  // ── Mapa fecha → fase (basado en el ciclo MÁS RECIENTE que la contiene) ──
-  // FIX: solo colorear días del ciclo actual, no de todos los ciclos solapados
+  // ── FIX: ciclos ordenados de más reciente a más antiguo
+  // Al iterar, el más reciente escribe primero y los antiguos no sobreescriben
   const datePhaseMap = useMemo(() => {
     const map: Record<string, Phase> = {};
+    // cycles ya viene ordenado de más reciente a más antiguo
     for (const cycle of cycles) {
-      const length = cycle.cycleLength ?? 28;
+      const length   = cycle.cycleLength ?? 28;
       const bleeding = cycle.bleedingDays ?? 5;
       for (let i = 0; i < length; i++) {
         const date = addDays(cycle.startDate, i);
-        // Solo escribir si no hay ya una fase más reciente
-        if (!map[date]) {
+        // Solo escribir si no hay ya una fase (el más reciente tiene prioridad)
+        if (!(date in map)) {
           map[date] = getPhaseForDay(i + 1, bleeding);
         }
       }
@@ -185,10 +175,7 @@ export default function MenstrualHistoryPage() {
   );
   if (!user) return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-sky-900 text-slate-100">
-      <div className="text-center space-y-2">
-        <p className="text-sm text-slate-200">No has iniciado sesión.</p>
-        <Link href="/login" className="text-xs text-sky-300 hover:text-sky-200 underline">Ir al login →</Link>
-      </div>
+      <Link href="/login" className="text-xs text-sky-300 underline">Ir al login →</Link>
     </div>
   );
   if (user.role !== "ATHLETE") return (
@@ -205,7 +192,7 @@ export default function MenstrualHistoryPage() {
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-[10px] tracking-[0.2em] uppercase text-sky-300">Ciclo menstrual</p>
-            <h1 className="text-2xl font-semibold">Historial de ciclos</h1>
+            <h1 className="text-2xl font-semibold">Calendario menstrual</h1>
             <p className="text-[11px] text-slate-400">Toca un día del calendario para ver los ciclos registrados.</p>
           </div>
           <Link href="/athlete" className="text-xs text-slate-300 hover:text-slate-100 underline flex-shrink-0">
@@ -229,7 +216,7 @@ export default function MenstrualHistoryPage() {
               className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-700/60 text-slate-300 transition-colors">›</button>
           </div>
 
-          {/* Leyenda de fases */}
+          {/* Leyenda */}
           <div className="flex flex-wrap gap-3 text-[11px] text-slate-400">
             <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-red-400" />Menstrual</span>
             <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-yellow-400" />Folicular</span>
@@ -247,12 +234,12 @@ export default function MenstrualHistoryPage() {
             {calendarDays.map((day, index) => {
               if (day === null) return <div key={`empty-${index}`} />;
 
-              const key         = dateKey(day);
-              const dayCycles   = cyclesByDate[key] ?? [];
+              const key           = dateKey(day);
+              const dayCycles     = cyclesByDate[key] ?? [];
               const hasCycleStart = dayCycles.length > 0;
-              const isSelected  = selectedDate === key;
-              const todayCell   = isToday(day);
-              const phase       = datePhaseMap[key];
+              const isSelected    = selectedDate === key;
+              const todayCell     = isToday(day);
+              const phase         = datePhaseMap[key];
 
               return (
                 <button
@@ -260,29 +247,32 @@ export default function MenstrualHistoryPage() {
                   type="button"
                   onClick={() => setSelectedDate(isSelected ? null : key)}
                   className={[
+                    // ── sin fondo de color, solo border si seleccionado ──────
                     "relative flex flex-col items-center justify-start pt-1 pb-1 rounded-xl mx-0.5 min-h-[3rem] transition-all duration-150",
                     isSelected
                       ? "bg-rose-600/20 border border-rose-500/60"
-                      : phase
-                      ? `${PHASE_BG[phase]} hover:opacity-80`
-                      : "border border-transparent hover:bg-slate-800/40",
+                      : "border border-transparent hover:bg-slate-800/30",
                     todayCell && !isSelected ? "ring-1 ring-sky-500/60" : "",
                   ].join(" ")}
                 >
                   <span className={[
                     "text-xs font-medium w-6 h-6 flex items-center justify-center rounded-full",
-                    todayCell ? "bg-sky-500 text-white font-bold"
+                    todayCell   ? "bg-sky-500 text-white font-bold"
                       : isSelected ? "text-rose-300"
-                      : phase ? "text-slate-100"
+                      : phase      ? "text-slate-100"
                       : "text-slate-500",
                   ].join(" ")}>
                     {day}
                   </span>
 
+                  {/* Franja de color fina en vez de fondo completo */}
+                  {phase && !isSelected && (
+                    <div className={`w-4 h-0.5 rounded-full mt-0.5 ${PHASE_BAR[phase]}`} />
+                  )}
+
+                  {/* Punto blanco para inicio de ciclo */}
                   {hasCycleStart && (
-                    <div className="flex gap-0.5 mt-0.5 justify-center">
-                      <span className="w-1.5 h-1.5 rounded-full bg-white/80" />
-                    </div>
+                    <div className="w-1.5 h-1.5 rounded-full bg-white/80 mt-0.5" />
                   )}
                 </button>
               );
