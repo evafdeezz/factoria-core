@@ -356,7 +356,7 @@ export default function CoachAthleteDetailPage() {
                         ))}
                         {dayPersonal.map((p,i) => (
                           <span key={`p-${i}`} className={`w-1.5 h-1.5 rounded-full ${
-                            p.type === "COMPETITION" ? "bg-yellow-300" : "bg-amber-400"
+                            p.type === "COMPETITION" ? "bg-violet-500" : "bg-amber-400"
                           }`} />
                         ))}
                       </div>
@@ -380,7 +380,7 @@ export default function CoachAthleteDetailPage() {
                   <span className="text-[10px] text-slate-400">Entreno propio</span>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-yellow-300" />
+                  <span className="w-2 h-2 rounded-full bg-violet-500" />
                   <span className="text-[10px] text-slate-400">Competición</span>
                 </div>
               </div>
@@ -475,7 +475,7 @@ export default function CoachAthleteDetailPage() {
                       <div key={p.id}
                         className="flex items-start gap-3 border border-slate-800 rounded-xl bg-slate-950/40 px-3 py-2.5">
                         <span className={`w-2 h-2 rounded-full flex-shrink-0 mt-1 ${
-                          p.type === "COMPETITION" ? "bg-yellow-300" : "bg-amber-400"
+                          p.type === "COMPETITION" ? "bg-violet-500" : "bg-amber-400"
                         }`} />
                         <div className="space-y-0.5">
                           <p className="text-xs font-semibold text-slate-50">{p.title}</p>
@@ -570,7 +570,7 @@ export default function CoachAthleteDetailPage() {
                   {personalSessions.slice(0, 5).map(p => (
                     <div key={p.id} className="flex items-start gap-2 border border-slate-800 rounded-xl px-3 py-2 bg-slate-950/40">
                       <span className={`w-2 h-2 rounded-full flex-shrink-0 mt-1 ${
-                        p.type === "COMPETITION" ? "bg-yellow-300" : "bg-amber-400"
+                        p.type === "COMPETITION" ? "bg-violet-500" : "bg-amber-400"
                       }`} />
                       <div>
                         <p className="text-[11px] font-semibold text-slate-200">{p.title}</p>

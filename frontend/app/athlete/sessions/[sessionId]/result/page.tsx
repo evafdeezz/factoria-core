@@ -304,18 +304,19 @@ export default function SessionResultPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-sky-900 text-slate-50 px-4 py-6">
       <div className="max-w-2xl mx-auto space-y-5">
-
-        <div>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-[10px] tracking-[0.2em] uppercase text-sky-300">
+              Registrar resultado · Sesión #{sessionId}
+            </p>
+            <h1 className="text-2xl font-semibold">
+              {existingResultId ? "Actualizar resultado" : "Nuevo resultado"}
+            </h1>
+          </div>
           <button type="button" onClick={() => router.back()}
-            className="text-[11px] text-slate-400 hover:text-slate-200 mb-3 underline">
-            ← Volver
+            className="text-[11px] text-slate-300 hover:text-slate-100 underline flex-shrink-0">
+            Volver →
           </button>
-          <p className="text-[10px] tracking-[0.2em] uppercase text-sky-300">
-            Registrar resultado · Sesión #{sessionId}
-          </p>
-          <h1 className="text-2xl font-semibold">
-            {existingResultId ? "Actualizar resultado" : "Nuevo resultado"}
-          </h1>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
