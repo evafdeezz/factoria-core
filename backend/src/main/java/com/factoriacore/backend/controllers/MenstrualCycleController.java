@@ -14,6 +14,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.core.user.OAuth2User;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -21,6 +22,7 @@ import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/menstrual")
@@ -74,12 +76,16 @@ public class MenstrualCycleController {
 
     private void checkAccess(User currentUser, AthleteProfile profile) {
         boolean isOwner = profile.getUser().getId().equals(currentUser.getId());
-        if (isOwner) return;
+
+        if (isOwner) {
+            return;
+        }
 
         boolean isCoachWithAccess = currentUser.getRole() == UserRole.COACH
                 && profile.isShareMenstrualDataWithCoach()
                 && groupMemberRepository.existsByAthlete_IdAndGroup_CoachId(
-                profile.getId(), currentUser.getId());
+                profile.getId(), currentUser.getId()
+        );
 
         if (!isCoachWithAccess) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "ACCESS_DENIED");
@@ -134,8 +140,15 @@ public class MenstrualCycleController {
 
         LocalDate today = LocalDate.now();
         LocalDate lastPeriod = profile.getLastPeriodDate();
-        int cycleLength = profile.getCycleLength() != null ? profile.getCycleLength() : 28;
-        int menstrualDuration = profile.getMenstrualDuration() != null ? profile.getMenstrualDuration() : 5;
+
+        int cycleLength = profile.getCycleLength() != null && profile.getCycleLength() > 0
+                ? profile.getCycleLength()
+                : 28;
+
+        int menstrualDuration = profile.getMenstrualDuration() != null && profile.getMenstrualDuration() > 0
+                ? profile.getMenstrualDuration()
+                : 5;
+
         long daysSince = ChronoUnit.DAYS.between(lastPeriod, today);
         int cycleDay = (int) daysSince + 1;
 
@@ -147,25 +160,31 @@ public class MenstrualCycleController {
                 .findByAthlete_IdOrderByStartDateDesc(athleteId)
                 .stream()
                 .findFirst()
-                .ifPresent(c -> dto.cycleId = c.getId());
+                .ifPresent(cycle -> dto.cycleId = cycle.getId());
 
         if (daysSince >= cycleLength) {
             int daysOverdue = (int) daysSince - cycleLength + 1;
+
             dto.cycleDay = cycleDay;
             dto.daysOverdue = daysOverdue;
             dto.isLate = true;
             dto.phase = null;
             dto.emoji = "🟠";
-            dto.phaseLabel = daysOverdue == 0 ? "Posible llegada hoy" : "Período pendiente de registrar";
+            dto.phaseLabel = daysOverdue == 0
+                    ? "Posible llegada hoy"
+                    : "Período pendiente de registrar";
+
             dto.summary = daysOverdue <= 3
                     ? "Según tu ciclo habitual, tu período podría llegar en cualquier momento. Es normal que haya variaciones de unos días. Cuando te baje, recuerda registrarlo para mantener el seguimiento actualizado."
                     : "Tu ciclo lleva " + daysOverdue + " días más de lo habitual. Los ciclos pueden alargarse por estrés, carga de entrenamiento elevada u otros factores. Si tienes dudas, consulta con tu médico.";
+
             dto.training = "En esta fase de incertidumbre, escucha a tu cuerpo. Si notas los síntomas previos habituales, ajusta la carga como en fase lútea tardía: prioriza técnica, movilidad y evita los tests de máxima intensidad.";
             dto.warning = "Cuando empiece tu período, registra la fecha para que el seguimiento vuelva a ser preciso.";
         } else {
             dto.cycleDay = cycleDay;
             dto.daysOverdue = 0;
             dto.isLate = false;
+
             buildPhaseInfo(dto, calculatePhase(cycleDay, menstrualDuration, cycleLength));
         }
 
@@ -173,6 +192,7 @@ public class MenstrualCycleController {
     }
 
     @PostMapping("/{athleteId}/register")
+    @Transactional
     public ResponseEntity<?> registerPeriod(@PathVariable Long athleteId,
                                             @RequestBody(required = false) RegisterPeriodRequest body,
                                             Authentication authentication) {
@@ -186,18 +206,74 @@ public class MenstrualCycleController {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "ACCESS_DENIED");
         }
 
-        LocalDate startDate = LocalDate.now();
+        LocalDate requestedStartDate = LocalDate.now();
 
         if (body != null && body.getStartDate() != null && !body.getStartDate().isBlank()) {
-            startDate = LocalDate.parse(body.getStartDate());
+            requestedStartDate = LocalDate.parse(body.getStartDate());
         }
 
-        MenstrualCycle cycle = new MenstrualCycle();
-        cycle.setAthlete(profile);
-        cycle.setStartDate(startDate);
-        cycle.setCycleLength(profile.getCycleLength());
-        cycle.setBleedingDays(profile.getMenstrualDuration());
-        menstrualCycleRepository.save(cycle);
+        final LocalDate startDate = requestedStartDate;
+
+        if (startDate.isAfter(LocalDate.now())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "START_DATE_IN_FUTURE");
+        }
+
+        List<MenstrualCycle> cycles =
+                menstrualCycleRepository.findByAthlete_IdOrderByStartDateDesc(athleteId);
+
+        Optional<MenstrualCycle> sameDayCycle = cycles.stream()
+                .filter(cycle -> cycle.getStartDate().equals(startDate))
+                .findFirst();
+
+        if (sameDayCycle.isPresent()) {
+            MenstrualCycle existingCycle = sameDayCycle.get();
+
+            profile.setLastPeriodDate(startDate);
+            athleteProfileRepository.save(profile);
+
+            return ResponseEntity.ok(Map.of(
+                    "message", "Ya existía un período registrado para esa fecha",
+                    "startDate", existingCycle.getStartDate().toString(),
+                    "cycleId", existingCycle.getId()
+            ));
+        }
+
+        Optional<MenstrualCycle> latestCycleOptional = cycles.stream().findFirst();
+
+        if (latestCycleOptional.isPresent()
+                && !startDate.isAfter(latestCycleOptional.get().getStartDate())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "START_DATE_MUST_BE_AFTER_LAST_PERIOD");
+        }
+
+        if (latestCycleOptional.isPresent()) {
+            MenstrualCycle previousCycle = latestCycleOptional.get();
+
+            int realPreviousCycleLength =
+                    (int) ChronoUnit.DAYS.between(previousCycle.getStartDate(), startDate);
+
+            if (realPreviousCycleLength <= 0) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "INVALID_CYCLE_LENGTH");
+            }
+
+            previousCycle.setCycleLength(realPreviousCycleLength);
+            menstrualCycleRepository.save(previousCycle);
+
+            profile.setCycleLength(realPreviousCycleLength);
+        }
+
+        MenstrualCycle newCycle = new MenstrualCycle();
+        newCycle.setAthlete(profile);
+        newCycle.setStartDate(startDate);
+
+        newCycle.setCycleLength(profile.getCycleLength() != null && profile.getCycleLength() > 0
+                ? profile.getCycleLength()
+                : 28);
+
+        newCycle.setBleedingDays(profile.getMenstrualDuration() != null && profile.getMenstrualDuration() > 0
+                ? profile.getMenstrualDuration()
+                : 5);
+
+        MenstrualCycle savedCycle = menstrualCycleRepository.save(newCycle);
 
         profile.setLastPeriodDate(startDate);
         athleteProfileRepository.save(profile);
@@ -205,7 +281,7 @@ public class MenstrualCycleController {
         return ResponseEntity.ok(Map.of(
                 "message", "Período registrado correctamente",
                 "startDate", startDate.toString(),
-                "cycleId", cycle.getId()
+                "cycleId", savedCycle.getId()
         ));
     }
 
@@ -226,9 +302,22 @@ public class MenstrualCycleController {
     // ── Helpers ─────────────────────────────────────────────────────────────────
 
     private MenstrualPhase calculatePhase(int cycleDay, int menstrualDuration, int cycleLength) {
-        if (cycleDay <= menstrualDuration) return MenstrualPhase.MENSTRUAL;
-        if (cycleDay <= 13) return MenstrualPhase.FOLLICULAR;
-        if (cycleDay <= 15) return MenstrualPhase.OVULATORY;
+        int ovulationDay = Math.max(1, cycleLength - 14);
+        int ovulationStart = Math.max(menstrualDuration + 1, ovulationDay - 1);
+        int ovulationEnd = ovulationDay + 1;
+
+        if (cycleDay <= menstrualDuration) {
+            return MenstrualPhase.MENSTRUAL;
+        }
+
+        if (cycleDay < ovulationStart) {
+            return MenstrualPhase.FOLLICULAR;
+        }
+
+        if (cycleDay <= ovulationEnd) {
+            return MenstrualPhase.OVULATORY;
+        }
+
         return MenstrualPhase.LUTEAL;
     }
 

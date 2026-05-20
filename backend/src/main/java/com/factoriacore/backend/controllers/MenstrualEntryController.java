@@ -98,7 +98,8 @@ public class MenstrualEntryController {
             boolean isCoachWithAccess = currentUser.getRole() == UserRole.COACH
                     && profile.isShareMenstrualDataWithCoach()
                     && groupMemberRepository.existsByAthlete_IdAndGroup_CoachId(
-                    athleteId, currentUser.getId());
+                    athleteId, currentUser.getId()
+            );
 
             if (!isCoachWithAccess) {
                 throw new ResponseStatusException(HttpStatus.FORBIDDEN, "ACCESS_DENIED");
@@ -117,12 +118,6 @@ public class MenstrualEntryController {
 
         if (cycleDay < 1) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "ENTRY_DATE_BEFORE_CYCLE_START");
-        }
-
-        Integer cycleLength = cycle.getCycleLength();
-
-        if (cycleLength != null && cycleLength > 0 && cycleDay > cycleLength) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "ENTRY_DATE_OUTSIDE_CYCLE");
         }
 
         return cycleDay;
