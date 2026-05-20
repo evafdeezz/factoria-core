@@ -26,6 +26,10 @@ function parseLocalDate(dateStr: string) {
   return new Date(year, month - 1, day);
 }
 
+function todayLocalDate() {
+  return toLocalDateString(new Date());
+}
+
 function addDays(dateStr: string, days: number) {
   const date = parseLocalDate(dateStr);
   date.setDate(date.getDate() + days);
@@ -134,12 +138,14 @@ export default function MenstrualHistoryPage() {
 
   useEffect(() => {
     if (userLoading) return;
+
     if (!user || user.role !== "ATHLETE") {
       setLoading(false);
       return;
     }
 
     const athleteId = Number(user.athleteProfileId);
+
     if (Number.isNaN(athleteId)) {
       setLoading(false);
       return;
@@ -206,6 +212,7 @@ export default function MenstrualHistoryPage() {
   // Mapa fecha → fase. Los ciclos más recientes tienen prioridad.
   const datePhaseMap = useMemo(() => {
     const map: Record<string, Phase> = {};
+    const todayStr = todayLocalDate();
 
     for (let ci = 0; ci < cycles.length; ci++) {
       const cycle = cycles[ci];
@@ -216,9 +223,15 @@ export default function MenstrualHistoryPage() {
       let daysToRender = length;
 
       if (nextCycleStart) {
-        const gap = daysBetween(cycle.startDate, nextCycleStart);
-        daysToRender = Math.max(gap, length);
+        // Ciclo ya cerrado: se pinta hasta el día anterior al siguiente período.
+        daysToRender = daysBetween(cycle.startDate, nextCycleStart);
+      } else {
+        // Ciclo actual: si se alarga más de lo habitual, se pinta hasta hoy.
+        const todayCycleDay = daysBetween(cycle.startDate, todayStr) + 1;
+        daysToRender = Math.max(length, todayCycleDay);
       }
+
+      if (daysToRender <= 0) continue;
 
       for (let i = 0; i < daysToRender; i++) {
         const date = addDays(cycle.startDate, i);

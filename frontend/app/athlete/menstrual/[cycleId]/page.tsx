@@ -79,18 +79,31 @@ function formatDate(dateStr: string) {
   });
 }
 
-function getDaysInCycle(cycle: MenstrualCycleDto): string[] {
+function getDaysInCycle(
+  cycle: MenstrualCycleDto,
+  nextCycle: MenstrualCycleDto | null
+): string[] {
   const days: string[] = [];
-  const length = cycle.cycleLength ?? 28;
   const today = parseLocalDate(todayLocalDate());
 
-  for (let i = 0; i < length; i++) {
-    const dateStr = addDays(cycle.startDate, i);
-    const date = parseLocalDate(dateStr);
+  const endDate = nextCycle
+    ? addDays(nextCycle.startDate, -1)
+    : todayLocalDate();
 
-    if (date > today) break;
+  const lastDate = parseLocalDate(endDate);
+  const safeLastDate = lastDate > today ? today : lastDate;
 
-    days.push(dateStr);
+  const totalDays = daysBetween(
+    cycle.startDate,
+    toLocalDateString(safeLastDate)
+  ) + 1;
+
+  if (totalDays <= 0) {
+    return days;
+  }
+
+  for (let i = 0; i < totalDays; i++) {
+    days.push(addDays(cycle.startDate, i));
   }
 
   return days;
@@ -248,7 +261,7 @@ export default function CycleDiaryPage() {
     );
   }
 
-  const days = cycle ? getDaysInCycle(cycle) : [];
+  const days = cycle ? getDaysInCycle(cycle, nextCycle) : [];
   const entryByDate = Object.fromEntries(entries.map((entry) => [entry.date, entry]));
 
   const byPhase: Record<Phase, { date: string; dayNum: number }[]> = {
