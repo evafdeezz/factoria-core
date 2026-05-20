@@ -3,6 +3,7 @@ package com.factoriacore.backend.controllers;
 import com.factoriacore.backend.models.MenstrualCycle;
 import com.factoriacore.backend.models.MenstrualEntry;
 import com.factoriacore.backend.models.User;
+import com.factoriacore.backend.models.enums.MenstrualPhase;
 import com.factoriacore.backend.models.enums.UserRole;
 import com.factoriacore.backend.repositories.AthleteProfileRepository;
 import com.factoriacore.backend.repositories.GroupMemberRepository;
@@ -18,6 +19,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 @RestController
@@ -106,6 +108,54 @@ public class MenstrualEntryController {
         return cycle;
     }
 
+    private int calculateCycleDay(MenstrualCycle cycle, LocalDate targetDate) {
+        if (cycle.getStartDate() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "CYCLE_START_DATE_NOT_FOUND");
+        }
+
+        int cycleDay = (int) ChronoUnit.DAYS.between(cycle.getStartDate(), targetDate) + 1;
+
+        if (cycleDay < 1) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "ENTRY_DATE_BEFORE_CYCLE_START");
+        }
+
+        Integer cycleLength = cycle.getCycleLength();
+
+        if (cycleLength != null && cycleLength > 0 && cycleDay > cycleLength) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "ENTRY_DATE_OUTSIDE_CYCLE");
+        }
+
+        return cycleDay;
+    }
+
+    private MenstrualPhase calculateEstimatedPhase(int cycleDay, MenstrualCycle cycle) {
+        int bleedingDays = cycle.getBleedingDays() != null && cycle.getBleedingDays() > 0
+                ? cycle.getBleedingDays()
+                : 5;
+
+        int cycleLength = cycle.getCycleLength() != null && cycle.getCycleLength() > 0
+                ? cycle.getCycleLength()
+                : 28;
+
+        int ovulationDay = Math.max(1, cycleLength - 14);
+        int ovulationStart = Math.max(bleedingDays + 1, ovulationDay - 1);
+        int ovulationEnd = ovulationDay + 1;
+
+        if (cycleDay <= bleedingDays) {
+            return MenstrualPhase.MENSTRUAL;
+        }
+
+        if (cycleDay < ovulationStart) {
+            return MenstrualPhase.FOLLICULAR;
+        }
+
+        if (cycleDay <= ovulationEnd) {
+            return MenstrualPhase.OVULATORY;
+        }
+
+        return MenstrualPhase.LUTEAL;
+    }
+
     /** GET — todas las entradas de un ciclo */
     @GetMapping
     public List<MenstrualEntry> getAll(@PathVariable Long athleteId,
@@ -130,6 +180,9 @@ public class MenstrualEntryController {
 
         LocalDate targetDate = incoming.getDate() != null ? incoming.getDate() : LocalDate.now();
 
+        int cycleDay = calculateCycleDay(cycle, targetDate);
+        MenstrualPhase estimatedPhase = calculateEstimatedPhase(cycleDay, cycle);
+
         MenstrualEntry entry = entryRepository
                 .findByCycle_IdAndDate(cycleId, targetDate)
                 .orElseGet(MenstrualEntry::new);
@@ -137,13 +190,9 @@ public class MenstrualEntryController {
         entry.setCycle(cycle);
         entry.setDate(targetDate);
 
-        if (incoming.getCycleDay() != null) {
-            entry.setCycleDay(incoming.getCycleDay());
-        }
-
-        if (incoming.getEstimatedPhase() != null) {
-            entry.setEstimatedPhase(incoming.getEstimatedPhase());
-        }
+        // Estos campos los calcula siempre el backend.
+        entry.setCycleDay(cycleDay);
+        entry.setEstimatedPhase(estimatedPhase);
 
         if (incoming.getPainLevel() != null) {
             entry.setPainLevel(incoming.getPainLevel());
