@@ -188,7 +188,7 @@ export default function CycleBlock({ athleteId }: Props) {
             onClick={() => router.push("/athlete/menstrual")}
             className="text-[11px] text-slate-400 hover:text-slate-200 underline"
           >
-            Ver ciclos anteriores →
+            Calendario menstrual →
           </button>
         </div>
 

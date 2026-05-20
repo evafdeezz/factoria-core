@@ -292,7 +292,7 @@ export default function AthleteHomePage() {
                   className="border border-slate-800 rounded-xl px-3 py-2.5 flex items-center justify-between text-sm bg-slate-950/40">
                   <div className="flex items-center gap-2">
                     <span className={`w-2 h-2 rounded-full flex-shrink-0 ${
-                      p.type === "COMPETITION" ? "bg-yellow-300" : "bg-amber-400"
+                      p.type === "COMPETITION" ? "bg-violet-500" : "bg-amber-400"
                     }`} />
                     <div>
                       <p className="font-semibold text-slate-50">{p.title}</p>
@@ -379,7 +379,7 @@ export default function AthleteHomePage() {
                       "flex-1 py-2 rounded-lg text-xs font-semibold border transition-colors",
                       newForm.type === t
                         ? t === "COMPETITION"
-                          ? "bg-yellow-500/20 border-yellow-400 text-yellow-300"
+                          ? "bg-violet-500/20 border-violet-400 text-violet-300"
                           : "bg-amber-500/20 border-amber-400 text-amber-300"
                         : "border-slate-700 text-slate-400 hover:border-slate-500",
                     ].join(" ")}
