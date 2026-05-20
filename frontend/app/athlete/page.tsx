@@ -17,17 +17,27 @@ function formatDate(date: Date): string {
   return date.toISOString().slice(0, 10);
 }
 
+interface PersonalSessionDto {
+  id: number;
+  athleteId: number;
+  date: string;
+  title: string;
+  type: "TRAINING" | "COMPETITION";
+  notes?: string | null;
+}
+
 export default function AthleteHomePage() {
   const router = useRouter();
   const { user, loading: userLoading, setUser } = useCurrentUser();
 
   const [today] = useState(() => formatDate(new Date()));
-  const [wellness, setWellness] = useState<WellnessEntryDto | null>(null);
-  const [sessions, setSessions] = useState<TrainingSessionDto[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [group, setGroup] = useState<GroupDto | null>(null);
-  const [logoutLoading, setLogoutLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [wellness,          setWellness]          = useState<WellnessEntryDto | null>(null);
+  const [sessions,          setSessions]          = useState<TrainingSessionDto[]>([]);
+  const [personalSessions,  setPersonalSessions]  = useState<PersonalSessionDto[]>([]);
+  const [loading,           setLoading]           = useState(true);
+  const [group,             setGroup]             = useState<GroupDto | null>(null);
+  const [logoutLoading,     setLogoutLoading]     = useState(false);
+  const [error,             setError]             = useState<string | null>(null);
 
   useEffect(() => {
     if (userLoading) return;
@@ -48,12 +58,24 @@ export default function AthleteHomePage() {
       let hasTechnicalError = false;
       let wellnessData: WellnessEntryDto | null = null;
       let sessionsData: TrainingSessionDto[] = [];
+      let personalData: PersonalSessionDto[] = [];
 
       try { wellnessData = await getWellnessForDate(athleteId!, today); }
       catch (err) { console.error("Error cargando wellness:", err); hasTechnicalError = true; }
 
       try { sessionsData = await getAthleteTodaySessions(athleteId!); }
       catch (err) { console.error("Error cargando sesiones de hoy:", err); hasTechnicalError = true; }
+
+      try {
+        const res = await fetch(
+          `${API_BASE_URL}/personal-sessions/athlete/${athleteId}`,
+          { cache: "no-store", credentials: "include" }
+        );
+        if (res.ok) {
+          const all: PersonalSessionDto[] = await res.json();
+          personalData = all.filter((p) => p.date === today);
+        }
+      } catch (err) { console.error("Error cargando sesiones personales:", err); }
 
       let groupData: GroupDto | null = null;
       try {
@@ -66,6 +88,7 @@ export default function AthleteHomePage() {
 
       setWellness(wellnessData);
       setSessions(sessionsData);
+      setPersonalSessions(personalData);
       setGroup(groupData);
       if (hasTechnicalError) setError("No se han podido cargar algunos datos del día.");
       setLoading(false);
@@ -116,6 +139,8 @@ export default function AthleteHomePage() {
     </div>
   );
 
+  const totalHoy = sessions.length + personalSessions.length;
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-sky-900 text-slate-50 px-4 py-6">
       <div className="max-w-5xl mx-auto space-y-6">
@@ -144,16 +169,11 @@ export default function AthleteHomePage() {
           </p>
         )}
 
-        {/* ── Ciclo menstrual ────────────────────────────────────────────────
-            Solo se muestra si la atleta tiene tracking activado.
-            CycleBlock hace fetch a /api/menstrual/{id}/status y si el backend
-            devuelve 204 (tracking desactivado o sin lastPeriodDate) no renderiza nada.
-        */}
         {user.athleteProfileId && (
           <CycleBlock athleteId={user.athleteProfileId} />
         )}
 
-        {/* ── Wellness ─────────────────────────────────────────────────────── */}
+        {/* Wellness */}
         <section className="bg-slate-900/60 border border-slate-800 rounded-2xl shadow-xl p-4 space-y-3">
           <div className="flex items-center justify-between">
             <div>
@@ -200,7 +220,7 @@ export default function AthleteHomePage() {
           </Link>
         </section>
 
-        {/* ── Sesiones de hoy ──────────────────────────────────────────────── */}
+        {/* Sesiones de hoy */}
         <section className="bg-slate-900/60 border border-slate-800 rounded-2xl shadow-xl p-4 space-y-3">
           <div className="flex items-center justify-between">
             <div>
@@ -212,27 +232,53 @@ export default function AthleteHomePage() {
             </Link>
           </div>
 
-          {sessions.length === 0 ? (
+          {totalHoy === 0 ? (
             <p className="text-sm text-slate-400">Hoy no tienes sesiones asignadas.</p>
           ) : (
             <div className="space-y-2">
+
+              {/* Sesiones del grupo */}
               {sessions.map((session) => (
                 <div key={session.id}
-                  className="border border-slate-800 rounded-xl px-3 py-2 flex items-center justify-between text-sm bg-slate-950/40">
-                  <div>
+                  className="border border-slate-800 rounded-xl px-3 py-2.5 flex items-center justify-between text-sm bg-slate-950/40">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-sky-400 flex-shrink-0" />
                     <p className="font-semibold text-slate-50">{session.title}</p>
-                    </div>
+                  </div>
                   <Link href={`/athlete/sessions/${session.id}/result`}
-                    className="text-[11px] font-semibold text-sky-300 hover:text-sky-200">
+                    className="text-[11px] font-semibold text-sky-300 hover:text-sky-200 flex-shrink-0 ml-3">
                     Registrar resultado →
                   </Link>
+                </div>
+              ))}
+
+              {/* Sesiones personales */}
+              {personalSessions.map((p) => (
+                <div key={p.id}
+                  className="border border-slate-800 rounded-xl px-3 py-2.5 flex items-center justify-between text-sm bg-slate-950/40">
+                  <div className="flex items-center gap-2">
+                    <span className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                      p.type === "COMPETITION" ? "bg-yellow-300" : "bg-amber-400"
+                    }`} />
+                    <div>
+                      <p className="font-semibold text-slate-50">{p.title}</p>
+                      <p className="text-[10px] text-slate-400">
+                        {p.type === "COMPETITION" ? "🏆 Competición" : "🏃 Entrenamiento propio"}
+                      </p>
+                    </div>
+                  </div>
+                  {p.notes && (
+                    <p className="text-[10px] text-slate-500 italic ml-3 text-right max-w-[40%]">
+                      {p.notes}
+                    </p>
+                  )}
                 </div>
               ))}
             </div>
           )}
         </section>
 
-        {/* ── Grupo ────────────────────────────────────────────────────────── */}
+        {/* Grupo */}
         <section className="bg-slate-900/40 border border-dashed border-slate-700 rounded-2xl p-4">
           <div className="flex items-center justify-between">
             <div>
