@@ -12,14 +12,26 @@ import { getBlocksBySession, SessionBlockDto } from "@/lib/sessionBlocks";
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL || "https://factoriacore.duckdns.org/api";
 
-// ─── Tipos sesión personal ────────────────────────────────────────────────────
 interface PersonalSessionDto {
-  id: number;
-  athleteId: number;
-  date: string;
-  title: string;
-  type: "TRAINING" | "COMPETITION";
+  id: number; athleteId: number; date: string;
+  title: string; type: "TRAINING" | "COMPETITION"; notes?: string | null;
+}
+
+interface CycleEntryDto {
+  id: number; date: string;
+  cycleDay?: number | null;
+  estimatedPhase?: string | null;
+  painLevel?: number | null;
+  fatigueLevel?: number | null;
+  flowLevel?: number | null;
+  mood?: number | null;
   notes?: string | null;
+}
+
+interface CycleHistoryDto {
+  id: number; startDate: string;
+  cycleLength?: number | null;
+  bleedingDays?: number | null;
 }
 
 async function getPersonalSessions(athleteId: number): Promise<PersonalSessionDto[]> {
@@ -29,8 +41,6 @@ async function getPersonalSessions(athleteId: number): Promise<PersonalSessionDt
   if (!res.ok) return [];
   return res.json();
 }
-
-// ─── Calendar helpers ─────────────────────────────────────────────────────────
 
 const DAYS_ES   = ["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"];
 const MONTHS_ES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio",
@@ -72,7 +82,10 @@ const PHASE_STYLES: Record<string, { bg: string; border: string; text: string }>
   LUTEAL:     { bg: "bg-blue-900/30",    border: "border-blue-700/40",    text: "text-blue-300"   },
 };
 
-// ─── Result display ───────────────────────────────────────────────────────────
+const PHASE_LABELS: Record<string, string> = {
+  MENSTRUAL: "Menstrual 🔴", FOLLICULAR: "Folicular 🟡",
+  OVULATORY: "Ovulatoria 🟢", LUTEAL: "Lútea 🔵",
+};
 
 interface ParsedBlock {
   blockId: number;
@@ -117,8 +130,6 @@ function ResultBlocks({ timeMain }: { timeMain?: string|null }) {
   );
 }
 
-// ─── Main page ────────────────────────────────────────────────────────────────
-
 export default function CoachAthleteDetailPage() {
   const params  = useParams();
   const router  = useRouter();
@@ -130,6 +141,9 @@ export default function CoachAthleteDetailPage() {
   const [sessions,         setSessions]         = useState<TrainingSessionDto[]>([]);
   const [personalSessions, setPersonalSessions] = useState<PersonalSessionDto[]>([]);
   const [cycleStatus,      setCycleStatus]      = useState<any>(null);
+  const [cycleEntries,     setCycleEntries]     = useState<CycleEntryDto[]>([]);
+  const [cycleHistory,     setCycleHistory]     = useState<CycleHistoryDto[]>([]);
+  const [cycleExpanded,    setCycleExpanded]    = useState(false);
   const [blocksBySession,  setBlocksBySession]  = useState<Record<number, SessionBlockDto[]>>({});
 
   const [loading,         setLoading]         = useState(true);
@@ -165,10 +179,38 @@ export default function CoachAthleteDetailPage() {
         setSessions(sess);
         setPersonalSessions(personal);
 
+        // Ciclo menstrual — status + historial + entradas del ciclo actual
         try {
           const cr = await fetch(`${API_BASE_URL}/menstrual/${pid}/status`,
             { credentials:"include", cache:"no-store" });
-          if (cr.ok) setCycleStatus(await cr.json());
+          if (cr.ok) {
+            const status = await cr.json();
+            setCycleStatus(status);
+
+            // Historial de ciclos
+            const hr = await fetch(`${API_BASE_URL}/menstrual/${pid}/history`,
+              { credentials:"include", cache:"no-store" });
+            if (hr.ok) {
+              const hist: CycleHistoryDto[] = await hr.json();
+              setCycleHistory([...hist].sort(
+                (a,b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime()
+              ));
+
+              // Entradas del ciclo más reciente
+              if (status.cycleId && hist.length > 0) {
+                const er = await fetch(
+                  `${API_BASE_URL}/menstrual/${pid}/cycles/${status.cycleId}/entries`,
+                  { credentials:"include", cache:"no-store" }
+                );
+                if (er.ok) {
+                  const entries: CycleEntryDto[] = await er.json();
+                  setCycleEntries([...entries].sort(
+                    (a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+                  ));
+                }
+              }
+            }
+          }
         } catch { /* no compartido o desactivado */ }
 
       } catch (err) {
@@ -263,7 +305,7 @@ export default function CoachAthleteDetailPage() {
             <p className="text-xs text-slate-400">{athlete.email}</p>
           </div>
           <button onClick={()=>router.back()} className="text-xs text-slate-300 hover:text-slate-100 underline flex-shrink-0">
-            ← Volver
+            Volver →
           </button>
         </div>
 
@@ -276,26 +318,114 @@ export default function CoachAthleteDetailPage() {
           {/* ── Columna izquierda (2/3) ───────────────────────────────── */}
           <div className="lg:col-span-2 space-y-5">
 
-            {/* Ciclo menstrual */}
+            {/* Ciclo menstrual — expandible */}
             {cycleStatus && (
-              <div className={`border rounded-2xl p-4 space-y-2 ${phaseStyle?.bg??"bg-slate-900/60"} ${phaseStyle?.border??"border-slate-800"}`}>
-                <div className="flex items-start gap-2.5">
-                  <span className="text-lg mt-0.5">{cycleStatus.emoji}</span>
-                  <div className="space-y-1">
-                    <p className={`text-xs font-semibold ${phaseStyle?.text??"text-slate-300"}`}>
-                      {cycleStatus.phaseLabel}
-                      {!cycleStatus.isLate && (
-                        <span className="text-slate-500 font-normal ml-1.5">Día {cycleStatus.cycleDay}/{cycleStatus.totalCycleLength}</span>
-                      )}
-                    </p>
-                    <p className="text-[11px] text-slate-400 leading-relaxed">{cycleStatus.training}</p>
-                    {cycleStatus.warning && (
-                      <p className="text-[11px] text-amber-300 bg-amber-900/20 border border-amber-700/30 rounded-lg px-2.5 py-1.5 mt-1">
-                        ⚠️ {cycleStatus.warning}
+              <div className={`border rounded-2xl overflow-hidden ${phaseStyle?.bg??"bg-slate-900/60"} ${phaseStyle?.border??"border-slate-800"}`}>
+
+                {/* Cabecera siempre visible — clicable */}
+                <button
+                  type="button"
+                  onClick={() => setCycleExpanded(v => !v)}
+                  className="w-full text-left p-4 flex items-start justify-between gap-3"
+                >
+                  <div className="flex items-start gap-2.5">
+                    <span className="text-lg mt-0.5">{cycleStatus.emoji}</span>
+                    <div className="space-y-1">
+                      <p className={`text-xs font-semibold ${phaseStyle?.text??"text-slate-300"}`}>
+                        {cycleStatus.phaseLabel}
+                        {!cycleStatus.isLate && (
+                          <span className="text-slate-500 font-normal ml-1.5">
+                            Día {cycleStatus.cycleDay}/{cycleStatus.totalCycleLength}
+                          </span>
+                        )}
                       </p>
-                    )}
+                      <p className="text-[11px] text-slate-400 leading-relaxed">{cycleStatus.training}</p>
+                      {cycleStatus.warning && (
+                        <p className="text-[11px] text-amber-300 bg-amber-900/20 border border-amber-700/30 rounded-lg px-2.5 py-1.5 mt-1">
+                          ⚠️ {cycleStatus.warning}
+                        </p>
+                      )}
+                    </div>
                   </div>
-                </div>
+                  <span className="text-[11px] text-slate-400 flex-shrink-0 mt-1">
+                    {cycleExpanded ? "Ver menos ↑" : "Ver más ↓"}
+                  </span>
+                </button>
+
+                {/* Panel expandible */}
+                {cycleExpanded && (
+                  <div className="border-t border-white/10 px-4 pb-4 space-y-4">
+
+                    {/* Entradas recientes del diario */}
+                    <div className="space-y-2 pt-3">
+                      <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                        Diario reciente — ciclo actual
+                      </p>
+                      {cycleEntries.length === 0 ? (
+                        <p className="text-[11px] text-slate-600">Sin entradas registradas en este ciclo.</p>
+                      ) : (
+                        <div className="space-y-2">
+                          {cycleEntries.slice(0, 7).map(e => (
+                            <div key={e.id}
+                              className="bg-slate-950/40 border border-slate-800 rounded-xl px-3 py-2">
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="text-[11px] font-semibold text-slate-200">{e.date}</span>
+                                {e.estimatedPhase && (
+                                  <span className="text-[10px] text-slate-400">
+                                    {PHASE_LABELS[e.estimatedPhase] ?? e.estimatedPhase}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex flex-wrap gap-3 text-[11px] text-slate-400">
+                                {e.painLevel    != null && e.painLevel    > 0 && <span>🩸 Dolor {e.painLevel}/10</span>}
+                                {e.fatigueLevel != null && e.fatigueLevel > 0 && <span>💤 Fatiga {e.fatigueLevel}/10</span>}
+                                {e.flowLevel    != null && e.flowLevel    > 0 && <span>💧 Flujo {e.flowLevel}/10</span>}
+                                {e.mood         != null && e.mood         > 0 && <span>😊 Ánimo {e.mood}/10</span>}
+                              </div>
+                              {e.notes && (
+                                <p className="text-[10px] text-slate-500 italic mt-1">"{e.notes}"</p>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Historial de ciclos */}
+                    <div className="space-y-2">
+                      <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                        Historial de ciclos
+                      </p>
+                      {cycleHistory.length === 0 ? (
+                        <p className="text-[11px] text-slate-600">Sin historial.</p>
+                      ) : (
+                        <div className="space-y-1.5">
+                          {cycleHistory.slice(0, 6).map((c, i) => (
+                            <div key={c.id}
+                              className="flex items-center justify-between bg-slate-950/40 border border-slate-800 rounded-xl px-3 py-2">
+                              <div className="flex items-center gap-2">
+                                {i === 0 && (
+                                  <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-rose-900/50 border border-rose-700/50 text-rose-300">
+                                    actual
+                                  </span>
+                                )}
+                                <span className="text-[11px] text-slate-200">
+                                  {new Date(c.startDate + "T00:00:00").toLocaleDateString("es-ES", {
+                                    day: "numeric", month: "short", year: "numeric"
+                                  })}
+                                </span>
+                              </div>
+                              <div className="flex gap-3 text-[10px] text-slate-500">
+                                {c.cycleLength    && <span>{c.cycleLength}d ciclo</span>}
+                                {c.bleedingDays   && <span>{c.bleedingDays}d regla</span>}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -321,10 +451,7 @@ export default function CoachAthleteDetailPage() {
                   const key         = dateKey(viewYear, viewMonth, day);
                   const daySessions = sessionsByDate[key] ?? [];
                   const dayPersonal = personalByDate[key] ?? [];
-                  const hasSession  = daySessions.length > 0;
-                  const hasPersonal = dayPersonal.length > 0;
-                  const hasAnything = hasSession || hasPersonal;
-                  const hasResult   = daySessions.some(s => resultsBySession.has(s.id));
+                  const hasAnything = daySessions.length > 0 || dayPersonal.length > 0;
                   const isSelected  = selectedDate === key;
                   const isToday     = today.getFullYear()===viewYear && today.getMonth()===viewMonth && today.getDate()===day;
 
@@ -365,7 +492,6 @@ export default function CoachAthleteDetailPage() {
                 })}
               </div>
 
-              {/* Leyenda */}
               <div className="pt-2 border-t border-slate-800 flex flex-wrap gap-4">
                 <div className="flex items-center gap-1.5">
                   <span className={`w-2 h-2 rounded-full ${SESSION_DOT}`} />
@@ -393,7 +519,6 @@ export default function CoachAthleteDetailPage() {
                   {(() => { const [y,m,d] = selectedDate.split("-").map(Number); return `${d} de ${MONTHS_ES[m-1]} de ${y}`; })()}
                 </h3>
 
-                {/* Sesiones del grupo */}
                 {selectedSessions.map(s => {
                   const result = resultsBySession.get(s.id);
                   const blocks = blocksBySession[s.id] ?? [];
@@ -465,7 +590,6 @@ export default function CoachAthleteDetailPage() {
                   );
                 })}
 
-                {/* Sesiones personales */}
                 {selectedPersonal.length > 0 && (
                   <div className="space-y-2">
                     <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
@@ -482,9 +606,7 @@ export default function CoachAthleteDetailPage() {
                           <p className="text-[10px] text-slate-400">
                             {p.type === "COMPETITION" ? "🏆 Competición" : "🏃 Entrenamiento propio"}
                           </p>
-                          {p.notes && (
-                            <p className="text-[10px] text-slate-500 italic">{p.notes}</p>
-                          )}
+                          {p.notes && <p className="text-[10px] text-slate-500 italic">{p.notes}</p>}
                         </div>
                       </div>
                     ))}
@@ -497,7 +619,6 @@ export default function CoachAthleteDetailPage() {
           {/* ── Columna derecha (1/3) ─────────────────────────────────── */}
           <div className="space-y-5">
 
-            {/* Stats */}
             <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 space-y-3">
               <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Resumen</p>
               <div className="grid grid-cols-2 gap-2">
@@ -515,7 +636,6 @@ export default function CoachAthleteDetailPage() {
               </div>
             </div>
 
-            {/* Wellness */}
             <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 space-y-3">
               <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Wellness reciente</p>
               {wellness.length === 0 ? (
@@ -545,7 +665,6 @@ export default function CoachAthleteDetailPage() {
               )}
             </div>
 
-            {/* Dolores reportados */}
             {results.some(r => r.painFlag) && (
               <div className="bg-red-900/20 border border-red-700/40 rounded-2xl p-4 space-y-2">
                 <p className="text-[10px] font-semibold uppercase tracking-wider text-red-400">⚠️ Dolores reportados</p>
@@ -560,7 +679,6 @@ export default function CoachAthleteDetailPage() {
               </div>
             )}
 
-            {/* Sesiones personales recientes */}
             {personalSessions.length > 0 && (
               <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 space-y-3">
                 <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
@@ -582,7 +700,6 @@ export default function CoachAthleteDetailPage() {
                 </div>
               </div>
             )}
-
           </div>
         </div>
       </div>
