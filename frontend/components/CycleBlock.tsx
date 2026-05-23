@@ -204,7 +204,7 @@ export default function CycleBlock({ athleteId }: Props) {
         {status.isLate && (
           <div className="bg-slate-900/60 border border-slate-700 rounded-xl px-3 py-2">
             <p className="text-[10px] text-orange-300 font-semibold uppercase tracking-wider mb-1">
-              💡 Consejo para hoy
+              Consejo para hoy
             </p>
             <p className="text-xs text-slate-300 leading-relaxed">
               {status.training}
