@@ -342,7 +342,7 @@ export default function CoachAthleteDetailPage() {
                       <p className="text-[11px] text-slate-400 leading-relaxed">{cycleStatus.training}</p>
                       {cycleStatus.warning && (
                         <p className="text-[11px] text-amber-300 bg-amber-900/20 border border-amber-700/30 rounded-lg px-2.5 py-1.5 mt-1">
-                          ⚠️ {cycleStatus.warning}
+                          {cycleStatus.warning}
                         </p>
                       )}
                     </div>
@@ -377,10 +377,10 @@ export default function CoachAthleteDetailPage() {
                                 )}
                               </div>
                               <div className="flex flex-wrap gap-3 text-[11px] text-slate-400">
-                                {e.painLevel    != null && e.painLevel    > 0 && <span>🩸 Dolor {e.painLevel}/10</span>}
-                                {e.fatigueLevel != null && e.fatigueLevel > 0 && <span>💤 Fatiga {e.fatigueLevel}/10</span>}
-                                {e.flowLevel    != null && e.flowLevel    > 0 && <span>💧 Flujo {e.flowLevel}/10</span>}
-                                {e.mood         != null && e.mood         > 0 && <span>😊 Ánimo {e.mood}/10</span>}
+                                {e.painLevel    != null && e.painLevel    > 0 && <span>Dolor {e.painLevel}/10</span>}
+                                {e.fatigueLevel != null && e.fatigueLevel > 0 && <span>Fatiga {e.fatigueLevel}/10</span>}
+                                {e.flowLevel    != null && e.flowLevel    > 0 && <span>Flujo {e.flowLevel}/10</span>}
+                                {e.mood         != null && e.mood         > 0 && <span>Ánimo {e.mood}/10</span>}
                               </div>
                               {e.notes && (
                                 <p className="text-[10px] text-slate-500 italic mt-1">"{e.notes}"</p>
@@ -577,7 +577,7 @@ export default function CoachAthleteDetailPage() {
                               )}
                               {result.painFlag && (
                                 <p className="text-[11px] text-red-300 bg-red-900/20 rounded px-2 py-1">
-                                  ⚠️ {result.painNotes || "Reportó dolor"}
+                                  {result.painNotes || "Reportó dolor"}
                                 </p>
                               )}
                             </div>
@@ -604,7 +604,7 @@ export default function CoachAthleteDetailPage() {
                         <div className="space-y-0.5">
                           <p className="text-xs font-semibold text-slate-50">{p.title}</p>
                           <p className="text-[10px] text-slate-400">
-                            {p.type === "COMPETITION" ? "🏆 Competición" : "🏃 Entrenamiento propio"}
+                            {p.type === "COMPETITION" ? "Competición" : "Entrenamiento propio"}
                           </p>
                           {p.notes && <p className="text-[10px] text-slate-500 italic">{p.notes}</p>}
                         </div>
@@ -647,9 +647,9 @@ export default function CoachAthleteDetailPage() {
                       <div className="flex items-center justify-between">
                         <p className="text-[11px] font-semibold text-slate-200">{w.date}</p>
                         <div className="flex gap-2 text-[10px] text-slate-400">
-                          {w.fatigue  != null && <span title="Fatiga">💤 {w.fatigue}</span>}
-                          {w.soreness != null && <span title="Dolor">💪 {w.soreness}</span>}
-                          {w.stress   != null && <span title="Estrés">🧠 {w.stress}</span>}
+                          {w.fatigue  != null && <span title="Fatiga">{w.fatigue}</span>}
+                          {w.soreness != null && <span title="Dolor">{w.soreness}</span>}
+                          {w.stress   != null && <span title="Estrés">{w.stress}</span>}
                         </div>
                       </div>
                       {w.comment && <p className="text-[10px] text-slate-400 italic mt-0.5">"{w.comment}"</p>}
@@ -667,7 +667,7 @@ export default function CoachAthleteDetailPage() {
 
             {results.some(r => r.painFlag) && (
               <div className="bg-red-900/20 border border-red-700/40 rounded-2xl p-4 space-y-2">
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-red-400">⚠️ Dolores reportados</p>
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-red-400">Dolores reportados</p>
                 <div className="space-y-1.5">
                   {results.filter(r=>r.painFlag).slice(0,5).map(r => (
                     <div key={r.id} className="text-[11px] text-slate-300">

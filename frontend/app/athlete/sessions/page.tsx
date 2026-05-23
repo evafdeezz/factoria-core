@@ -355,7 +355,7 @@ function AthleteSessionsCalendar() {
                     <div>
                       <p className="font-semibold text-slate-50">{p.title}</p>
                       <p className="text-[10px] text-slate-400">
-                        {p.type === "COMPETITION" ? "🏆 Competición" : "🏃 Entrenamiento propio"}
+                        {p.type === "COMPETITION" ? "Competición" : "Entrenamiento propio"}
                       </p>
                       {p.notes && <p className="text-[10px] text-slate-500 italic mt-0.5">{p.notes}</p>}
                     </div>
@@ -417,7 +417,7 @@ function AthleteSessionsCalendar() {
                         : "border-slate-700 text-slate-400 hover:border-slate-500",
                     ].join(" ")}
                   >
-                    {t === "COMPETITION" ? "🏆 Competición" : "🏃 Entrenamiento"}
+                    {t === "COMPETITION" ? "Competición" : "Entrenamiento"}
                   </button>
                 ))}
               </div>

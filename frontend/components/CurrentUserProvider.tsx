@@ -27,10 +27,12 @@ const CurrentUserContext = createContext<CurrentUserContextValue | undefined>(
   undefined
 );
 
+// Contexto global para tener disponible el usuario actual en toda la aplicación.
 export function CurrentUserProvider({ children }: { children: ReactNode }) {
   const [user, setUserState] = useState<CurrentUser | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Centraliza el cambio de usuario y mantiene sincronizado el localStorage.
   const setUser = useCallback((value: CurrentUser | null) => {
     setUserState(value);
 
@@ -41,19 +43,20 @@ export function CurrentUserProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-const refreshUser = useCallback(async () => {
-  try {
-    setLoading(true);
-    const apiUser = await fetchCurrentUserFromApi();
-    setUser(apiUser); // ← delega todo a setUser, incluido el localStorage
-  } catch (error) {
-    console.error("Error refrescando usuario actual:", error);
-    const stored = getCurrentUser();
-    setUser(stored); // ← también para el fallback
-  } finally {
-    setLoading(false);
-  }
-}, [setUser]);
+  // Vuelve a consultar el usuario al backend y usa el guardado local como respaldo.
+  const refreshUser = useCallback(async () => {
+    try {
+      setLoading(true);
+      const apiUser = await fetchCurrentUserFromApi();
+      setUser(apiUser);
+    } catch (error) {
+      console.error("Error refrescando usuario actual:", error);
+      const stored = getCurrentUser();
+      setUser(stored);
+    } finally {
+      setLoading(false);
+    }
+  }, [setUser]);
 
   useEffect(() => {
     const stored = getCurrentUser();
@@ -74,6 +77,7 @@ const refreshUser = useCallback(async () => {
   );
 }
 
+// Hook propio para acceder al usuario actual sin repetir useContext en cada componente.
 export function useCurrentUser(): CurrentUserContextValue {
   const ctx = useContext(CurrentUserContext);
 

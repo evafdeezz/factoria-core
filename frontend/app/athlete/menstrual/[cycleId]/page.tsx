@@ -434,10 +434,11 @@ export default function CycleDiaryPage() {
                             </p>
                           )}
                         </div>
-
-                        <span className={`text-base ml-3 flex-shrink-0 ${hasData ? "text-sky-400" : "text-slate-600"}`}>
-                          {hasData ? "✏️" : "+"}
-                        </span>
+                        {!hasData && (
+                          <span className="text-base ml-3 flex-shrink-0 text-slate-600">
+                            +
+                          </span>
+                        )}
                       </div>
                     </button>
                   );

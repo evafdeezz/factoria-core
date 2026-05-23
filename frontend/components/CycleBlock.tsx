@@ -8,6 +8,7 @@ interface Props {
   athleteId: number;
 }
 
+// Estilos principales según la fase del ciclo.
 const PHASE_COLORS: Record<string, string> = {
   MENSTRUAL: "border-red-700 bg-red-950/30",
   FOLLICULAR: "border-yellow-600 bg-yellow-950/20",
@@ -16,6 +17,7 @@ const PHASE_COLORS: Record<string, string> = {
   LATE: "border-orange-600 bg-orange-950/20",
 };
 
+// Estilos de la etiqueta pequeña que muestra la fase actual.
 const PHASE_BADGE: Record<string, string> = {
   MENSTRUAL: "bg-red-900/60 text-red-200",
   FOLLICULAR: "bg-yellow-900/60 text-yellow-200",
@@ -24,6 +26,7 @@ const PHASE_BADGE: Record<string, string> = {
   LATE: "bg-orange-900/60 text-orange-200",
 };
 
+// Formatea una fecha como yyyy-MM-dd usando la fecha local del navegador.
 function toLocalDateString(date: Date) {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -32,11 +35,13 @@ function toLocalDateString(date: Date) {
   return `${year}-${month}-${day}`;
 }
 
+// Convierte una fecha yyyy-MM-dd en un objeto Date local.
 function parseLocalDate(dateStr: string) {
   const [year, month, day] = dateStr.split("-").map(Number);
   return new Date(year, month - 1, day);
 }
 
+// Devuelve la fecha de hoy en el mismo formato que usa el input date.
 function todayLocalDate() {
   return toLocalDateString(new Date());
 }
@@ -52,26 +57,30 @@ export default function CycleBlock({ athleteId }: Props) {
   const [registerSuccess, setRegisterSuccess] = useState(false);
   const [expanded, setExpanded] = useState(false);
 
+  // Carga el estado actual del ciclo desde el backend.
   async function load() {
     try {
       const data = await getCycleStatus(athleteId);
       setStatus(data);
     } catch {
-      // Si falla (401, red, etc.) simplemente no mostramos el bloque
+      // Si falla por permisos, red o falta de datos, ocultamos el bloque.
     } finally {
       setLoading(false);
     }
   }
 
+  // Recarga la información cuando cambia el atleta.
   useEffect(() => {
     void load();
   }, [athleteId]);
 
+  // Abre el modal dejando seleccionada por defecto la fecha de hoy.
   function openRegisterModal() {
     setSelectedDate(todayLocalDate());
     setShowModal(true);
   }
 
+  // Registra un nuevo período y actualiza el bloque con la información recalculada.
   async function handleRegister() {
     setRegistering(true);
 
@@ -87,7 +96,7 @@ export default function CycleBlock({ athleteId }: Props) {
 
       router.push(`/athlete/menstrual/${result.cycleId}`);
     } catch {
-      // user can retry
+      // Si algo falla, el modal permite que la usuaria pueda intentarlo de nuevo.
     } finally {
       setRegistering(false);
     }
@@ -95,10 +104,12 @@ export default function CycleBlock({ athleteId }: Props) {
 
   if (loading || !status) return null;
 
+  // Si el período está retrasado, se usa un estado visual específico.
   const phaseKey = status.isLate ? "LATE" : status.phase ?? "LUTEAL";
   const color = PHASE_COLORS[phaseKey] ?? "border-slate-700 bg-slate-900/40";
   const badge = PHASE_BADGE[phaseKey] ?? "bg-slate-800 text-slate-200";
 
+  // Calcula el avance del ciclo para la barra de progreso.
   const progress = status.isLate
     ? 100
     : Math.round((status.cycleDay / status.totalCycleLength) * 100);
@@ -214,7 +225,7 @@ export default function CycleBlock({ athleteId }: Props) {
               onClick={() => router.push(`/athlete/menstrual/${status.cycleId}`)}
               className="text-[11px] text-sky-400 hover:text-sky-300 underline"
             >
-              📓 Ver diario de este ciclo →
+              Ver diario de este ciclo →
             </button>
           )}
 

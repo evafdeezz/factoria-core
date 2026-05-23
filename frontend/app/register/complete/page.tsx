@@ -322,7 +322,6 @@ export default function RegisterCompletePage() {
                       : "border-slate-200 text-slate-600 hover:border-slate-300"
                   }`}
                 >
-                  <p className="text-2xl mb-1">{r === "COACH" ? "🎯" : "🏃"}</p>
                   <p className="text-sm font-semibold">
                     {r === "COACH" ? "Entrenador/a" : "Atleta"}
                   </p>
