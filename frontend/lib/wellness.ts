@@ -1,6 +1,7 @@
 export const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL || "https://factoriacore.duckdns.org/api";
 
+// Datos diarios de bienestar que rellena el atleta.
 export type WellnessEntryDto = {
   id?: number;
   athlete?: {
@@ -15,6 +16,7 @@ export type WellnessEntryDto = {
   comment?: string | null;
 };
 
+// Obtiene todos los registros de bienestar disponibles.
 export async function getWellness(): Promise<WellnessEntryDto[]> {
   const response = await fetch(`${API_BASE_URL}/wellness`, {
     credentials: "include",
@@ -33,6 +35,7 @@ export async function getWellness(): Promise<WellnessEntryDto[]> {
   return JSON.parse(text) as WellnessEntryDto[];
 }
 
+// Recupera el historial de bienestar de un atleta concreto.
 export async function getWellnessByAthlete(
   athleteId: number
 ): Promise<WellnessEntryDto[]> {
@@ -62,12 +65,14 @@ export async function getWellnessByAthlete(
   return JSON.parse(text) as WellnessEntryDto[];
 }
 
+// Alias usado por las pantallas que muestran el histórico.
 export async function getWellnessHistory(
   athleteId: number
 ): Promise<WellnessEntryDto[]> {
   return getWellnessByAthlete(athleteId);
 }
 
+// Busca si el atleta ya tiene un registro de bienestar para una fecha concreta.
 export async function getWellnessForDate(
   athleteId: number,
   date: string
@@ -99,6 +104,7 @@ export async function getWellnessForDate(
   return JSON.parse(text) as WellnessEntryDto;
 }
 
+// Crea o actualiza el registro de bienestar enviado desde el formulario.
 export async function saveWellness(
   payload: WellnessEntryDto
 ): Promise<WellnessEntryDto> {

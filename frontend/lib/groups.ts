@@ -1,6 +1,7 @@
 export const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL || "https://factoriacore.duckdns.org/api";
 
+// Estructura principal de un grupo tal y como llega desde el backend.
 export interface GroupDto {
   id: number;
   name: string;
@@ -14,6 +15,7 @@ export interface GroupDto {
   createdAt?: string;
 }
 
+// Obtiene todos los grupos disponibles.
 export async function getGroups(): Promise<GroupDto[]> {
   const res = await fetch(`${API_BASE_URL}/groups`, {
     cache: "no-store",
@@ -27,6 +29,7 @@ export async function getGroups(): Promise<GroupDto[]> {
   return res.json();
 }
 
+// Obtiene únicamente los grupos creados por un entrenador concreto.
 export async function getGroupsByCoach(coachId: number): Promise<GroupDto[]> {
   const res = await fetch(`${API_BASE_URL}/groups/coach/${coachId}`, {
     cache: "no-store",
@@ -40,6 +43,7 @@ export async function getGroupsByCoach(coachId: number): Promise<GroupDto[]> {
   return res.json();
 }
 
+// Busca un grupo por su identificador.
 export async function getGroup(id: number): Promise<GroupDto> {
   const res = await fetch(`${API_BASE_URL}/groups/${id}`, {
     cache: "no-store",
@@ -53,6 +57,7 @@ export async function getGroup(id: number): Promise<GroupDto> {
   return res.json();
 }
 
+// Permite localizar un grupo a partir del código de unión.
 export async function getGroupByJoinCode(joinCode: string): Promise<GroupDto> {
   const res = await fetch(`${API_BASE_URL}/groups/join/${joinCode}`, {
     cache: "no-store",
@@ -66,6 +71,7 @@ export async function getGroupByJoinCode(joinCode: string): Promise<GroupDto> {
   return res.json();
 }
 
+// Datos necesarios para crear un grupo desde el frontend.
 export interface CreateGroupPayload {
   name: string;
   description?: string;
@@ -77,6 +83,7 @@ export interface CreateGroupPayload {
   active?: boolean;
 }
 
+// Envía al backend la información necesaria para crear un nuevo grupo.
 export async function createGroup(
   payload: CreateGroupPayload
 ): Promise<GroupDto> {
@@ -96,6 +103,7 @@ export async function createGroup(
   return res.json();
 }
 
+// Elimina un grupo existente.
 export async function deleteGroup(id: number): Promise<void> {
   const res = await fetch(`${API_BASE_URL}/groups/${id}`, {
     method: "DELETE",
@@ -107,6 +115,7 @@ export async function deleteGroup(id: number): Promise<void> {
   }
 }
 
+// Actualiza solo los campos del grupo que se hayan modificado.
 export async function updateGroup(
   id: number,
   payload: Partial<CreateGroupPayload>

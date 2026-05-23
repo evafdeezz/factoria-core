@@ -7,6 +7,7 @@ export type MenstrualPhase =
   | "OVULATORY"
   | "LUTEAL";
 
+// Estado calculado del ciclo que se muestra en el panel del atleta.
 export interface CycleStatusDto {
   cycleId: number | null;
   cycleDay: number;
@@ -22,6 +23,7 @@ export interface CycleStatusDto {
   lastPeriodDate: string;
 }
 
+// Registro individual de un ciclo menstrual guardado en el historial.
 export interface MenstrualCycleDto {
   id: number;
   athleteId: number;
@@ -36,6 +38,7 @@ export interface RegisterPeriodResponse {
   startDate: string; // yyyy-MM-dd
 }
 
+// Obtiene el estado actual del ciclo. Si no hay datos todavía, devuelve null.
 export async function getCycleStatus(
   athleteId: number
 ): Promise<CycleStatusDto | null> {
@@ -59,6 +62,7 @@ export async function getCycleStatus(
   return res.json();
 }
 
+// Registra el inicio de un nuevo período para recalcular el ciclo.
 export async function registerPeriod(
   athleteId: number,
   startDate?: string | null
@@ -83,6 +87,7 @@ export async function registerPeriod(
   return res.json();
 }
 
+// Recupera el historial de ciclos registrados por el atleta.
 export async function getCycleHistory(
   athleteId: number
 ): Promise<MenstrualCycleDto[]> {

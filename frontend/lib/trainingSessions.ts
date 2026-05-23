@@ -1,6 +1,7 @@
 export const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL || "https://factoriacore.duckdns.org/api";
 
+// Sesión de entrenamiento ya adaptada al formato que usa el frontend.
 export interface TrainingSessionDto {
   id: number;
   date: string;
@@ -12,6 +13,7 @@ export interface TrainingSessionDto {
   createdAt?: string;
 }
 
+// Formato original que llega desde el backend.
 interface RawTrainingSession {
   id: number;
   date: string;
@@ -26,6 +28,7 @@ interface RawTrainingSession {
   createdAt?: string;
 }
 
+// Convierte la respuesta del backend en un objeto más cómodo para las pantallas.
 function mapTrainingSession(raw: RawTrainingSession): TrainingSessionDto {
   return {
     id: raw.id,
@@ -39,6 +42,7 @@ function mapTrainingSession(raw: RawTrainingSession): TrainingSessionDto {
   };
 }
 
+// Datos necesarios para crear una sesión de entrenamiento.
 export interface CreateTrainingSessionPayload {
   date: string;
   title: string;
@@ -48,6 +52,7 @@ export interface CreateTrainingSessionPayload {
   startTime?: string | null;
 }
 
+// Obtiene todas las sesiones asignadas a un atleta.
 export async function getAthleteSessions(
   athleteId: number
 ): Promise<TrainingSessionDto[]> {
@@ -70,6 +75,7 @@ export async function getAthleteSessions(
   return raw.map(mapTrainingSession);
 }
 
+// Obtiene las sesiones programadas para hoy de un atleta concreto.
 export async function getAthleteTodaySessions(
   athleteId: number
 ): Promise<TrainingSessionDto[]> {
@@ -92,6 +98,7 @@ export async function getAthleteTodaySessions(
   return raw.map(mapTrainingSession);
 }
 
+// Obtiene las sesiones de hoy asociadas a un grupo.
 export async function getGroupTodaySessions(
   groupId: number
 ): Promise<TrainingSessionDto[]> {
@@ -114,6 +121,7 @@ export async function getGroupTodaySessions(
   return raw.map(mapTrainingSession);
 }
 
+// Crea una nueva sesión y adapta la respuesta al formato del frontend.
 export async function createTrainingSession(
   payload: CreateTrainingSessionPayload
 ): Promise<TrainingSessionDto> {

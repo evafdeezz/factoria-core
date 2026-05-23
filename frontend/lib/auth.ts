@@ -23,11 +23,13 @@ export interface CurrentUserApiResponse {
 export const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL || "https://factoriacore.duckdns.org/api";
 
+// Guarda el usuario en localStorage para mantener la sesión disponible en el frontend.
 export function saveCurrentUser(user: CurrentUser) {
   if (typeof window === "undefined") return;
   localStorage.setItem(STORAGE_KEY, JSON.stringify(user));
 }
 
+// Recupera el usuario guardado en el navegador, si existe.
 export function getCurrentUser(): CurrentUser | null {
   if (typeof window === "undefined") return null;
 
@@ -41,11 +43,13 @@ export function getCurrentUser(): CurrentUser | null {
   }
 }
 
+// Limpia la información local del usuario al cerrar sesión.
 export function clearCurrentUser() {
   if (typeof window === "undefined") return;
   localStorage.removeItem(STORAGE_KEY);
 }
 
+// Consulta al backend quién es el usuario autenticado actualmente.
 export async function fetchCurrentUserFromApi(): Promise<CurrentUser | null> {
   try {
     const res = await fetch(`${API_BASE_URL}/auth/me`, {

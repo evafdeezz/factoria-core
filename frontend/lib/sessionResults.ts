@@ -1,6 +1,7 @@
 export const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL || "https://factoriacore.duckdns.org/api";
 
+// Resultado que registra un atleta después de realizar una sesión.
 export interface SessionResultDto {
   id?: number;
   sessionId?: number;
@@ -14,6 +15,7 @@ export interface SessionResultDto {
   recordedAt?: string;
 }
 
+// Obtiene todos los resultados registrados por un atleta.
 export async function getResultsByAthlete(
   athleteId: number
 ): Promise<SessionResultDto[]> {
@@ -21,10 +23,12 @@ export async function getResultsByAthlete(
     cache: "no-store",
     credentials: "include",
   });
+
   if (!res.ok) throw new Error("Error al obtener los resultados del atleta");
   return res.json();
 }
 
+// Obtiene todos los resultados asociados a una sesión concreta.
 export async function getResultsBySession(
   sessionId: number
 ): Promise<SessionResultDto[]> {
@@ -32,10 +36,12 @@ export async function getResultsBySession(
     cache: "no-store",
     credentials: "include",
   });
+
   if (!res.ok) throw new Error("Error al obtener los resultados de la sesión");
   return res.json();
 }
 
+// Busca el resultado de un atleta dentro de una sesión específica.
 export async function getSessionResult(
   athleteId: number,
   sessionId: number
@@ -44,6 +50,7 @@ export async function getSessionResult(
   return results.find((r) => r.athleteId === athleteId) ?? null;
 }
 
+// Guarda el resultado enviado por el atleta después del entrenamiento.
 export async function saveSessionResult(data: {
   sessionId: number;
   athleteId: number;
@@ -69,10 +76,12 @@ export async function saveSessionResult(data: {
       videoUrl: data.videoUrl ?? null,
     }),
   });
+
   if (!res.ok) {
     const txt = await res.text();
     console.error("Error al guardar resultado:", txt);
     throw new Error("No se pudo guardar el resultado");
   }
+
   return res.json();
 }

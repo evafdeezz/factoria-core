@@ -3,6 +3,7 @@ export const API_BASE_URL =
 
 export type UserRole = "COACH" | "ATHLETE";
 
+// Información principal de un usuario dentro de la aplicación.
 export interface UserDto {
   id: number;
   fullName: string;
@@ -16,6 +17,7 @@ export interface UserDto {
   updatedAt?: string;
 }
 
+// Obtiene todos los usuarios registrados.
 export async function getAllUsers(): Promise<UserDto[]> {
   const res = await fetch(`${API_BASE_URL}/users`, {
     cache: "no-store",
@@ -29,6 +31,7 @@ export async function getAllUsers(): Promise<UserDto[]> {
   return res.json();
 }
 
+// Obtiene únicamente los usuarios con rol de atleta.
 export async function getAthletes(): Promise<UserDto[]> {
   const res = await fetch(`${API_BASE_URL}/users/athletes`, {
     cache: "no-store",
@@ -42,6 +45,7 @@ export async function getAthletes(): Promise<UserDto[]> {
   return res.json();
 }
 
+// Obtiene únicamente los usuarios con rol de entrenador.
 export async function getCoaches(): Promise<UserDto[]> {
   const res = await fetch(`${API_BASE_URL}/users/coaches`, {
     cache: "no-store",
@@ -55,6 +59,7 @@ export async function getCoaches(): Promise<UserDto[]> {
   return res.json();
 }
 
+// Datos necesarios para crear un nuevo usuario.
 export interface CreateUserPayload {
   fullName: string;
   email: string;
@@ -65,6 +70,7 @@ export interface CreateUserPayload {
   pictureUrl?: string | null;
 }
 
+// Datos que se pueden modificar en un usuario ya existente.
 export interface UpdateUserPayload {
   fullName?: string;
   email?: string;
@@ -76,6 +82,7 @@ export interface UpdateUserPayload {
   active?: boolean;
 }
 
+// Crea un usuario nuevo desde el frontend.
 export async function createUser(payload: CreateUserPayload): Promise<UserDto> {
   const res = await fetch(`${API_BASE_URL}/users`, {
     method: "POST",
@@ -95,6 +102,7 @@ export async function createUser(payload: CreateUserPayload): Promise<UserDto> {
   return res.json();
 }
 
+// Actualiza los datos de un usuario existente.
 export async function updateUser(
   userId: number,
   payload: UpdateUserPayload
@@ -105,10 +113,12 @@ export async function updateUser(
     credentials: "include",
     body: JSON.stringify(payload),
   });
+
   if (!res.ok) {
     const txt = await res.text();
     console.error("Error al actualizar usuario:", txt);
     throw new Error("No se pudo actualizar el usuario");
   }
+
   return res.json();
 }
