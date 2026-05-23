@@ -144,25 +144,25 @@ export default function LoginPage() {
           </p>
 
           <h1 className="text-4xl md:text-5xl font-semibold leading-tight">
-            Organiza y cuida a tu{" "}
-            <span className="text-sky-400">grupo de atletas</span>.
+            Lo que pasa fuera de la pista{" "}
+            <span className="text-sky-400">también cuenta</span>
           </h1>
 
           <p className="text-sm md:text-base text-slate-300 max-w-md">
-            Diseñada para grupos de velocidad y vallas: planifica sesiones,
-            recoge el wellness diario y sigue el rendimiento de cada atleta en
-            un solo lugar.
+            Diseñada para grupos de velocidad y vallas: porque el rendimiento no empieza
+            cuando suena el cronómetro. Se construye día a día
+            conectando entrenamiento, bienestar y evolución.
           </p>
 
           <div className="flex flex-wrap gap-3 text-xs">
             <span className="px-3 py-1 rounded-full bg-slate-800/80 border border-slate-700">
-              Panel de grupo
+              Sesiones
             </span>
             <span className="px-3 py-1 rounded-full bg-slate-800/80 border border-slate-700">
-              Resultados de sesión
+              Wellness
             </span>
             <span className="px-3 py-1 rounded-full bg-slate-800/80 border border-slate-700">
-              Wellness diario
+              Progreso
             </span>
           </div>
         </div>
