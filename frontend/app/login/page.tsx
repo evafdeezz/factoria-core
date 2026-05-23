@@ -143,7 +143,7 @@ export default function LoginPage() {
             Factoría Core
           </p>
 
-          <h1 className="text-4xl md:text-5xl font-semibold leading-tight">
+          <h1 className="text-3xl md:text-4xl font-semibold leading-tight">
             Lo que pasa fuera de la pista{" "}
             <span className="text-sky-400">también cuenta</span>
           </h1>
