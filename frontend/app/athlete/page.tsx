@@ -186,7 +186,7 @@ export default function AthleteHomePage() {
         <header className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-semibold text-slate-50">Hola, {user.fullName}</h1>
-            <p className="text-xs text-slate-400">Resumen de tu día · {today}</p>
+            <p className="text-xs text-slate-400">Resumen de tu día · {today.split("-").reverse().join(".")}</p>
           </div>
           <div className="flex items-center gap-2">
             <Link href="/athlete/settings"
@@ -355,7 +355,7 @@ export default function AthleteHomePage() {
           <div className="bg-slate-900 border border-slate-700 rounded-2xl p-5 w-full max-w-sm space-y-4 shadow-2xl">
             <div>
               <h2 className="text-base font-semibold text-slate-50">Nueva sesión propia</h2>
-              <p className="text-xs text-slate-400 mt-0.5">{today}</p>
+              <p className="text-xs text-slate-400 mt-0.5">{today.split("-").reverse().join(".")}</p>
             </div>
 
             <div>

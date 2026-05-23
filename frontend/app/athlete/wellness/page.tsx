@@ -198,7 +198,7 @@ export default function AthleteWellnessPage() {
             Wellness de hoy
           </h1>
           <p className="text-xs text-slate-400">
-            Rellena cómo te encuentras hoy · {today}
+            Rellena cómo te encuentras hoy · {today.split("-").reverse().join(".")}
           </p>
         </header>
 

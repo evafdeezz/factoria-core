@@ -388,7 +388,7 @@ function AthleteSessionsCalendar() {
           <div className="bg-slate-900 border border-slate-700 rounded-2xl p-5 w-full max-w-sm space-y-4 shadow-2xl">
             <div>
               <h2 className="text-base font-semibold text-slate-50">Nueva sesión propia</h2>
-              <p className="text-xs text-slate-400 mt-0.5">{newForm.date}</p>
+              <p className="text-xs text-slate-400 mt-0.5">{newForm.date.split("-").reverse().join(".")}</p>
             </div>
 
             <div>

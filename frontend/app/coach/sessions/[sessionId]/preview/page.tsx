@@ -101,7 +101,7 @@ export default function CoachSessionPreviewPage() {
             <h1 className="text-2xl font-semibold">{session?.title ?? `Sesión #${sessionId}`}</h1>
             {session?.date && (
               <p className="text-xs text-slate-400 mt-0.5">
-                {session.date}{session.startTime ? ` · ${session.startTime}` : ""}
+                {session.date.split("-").reverse().join(".")}{session.startTime ? ` · ${session.startTime}` : ""}
               </p>
             )}
           </div>
