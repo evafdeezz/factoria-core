@@ -150,7 +150,7 @@ export default function LoginPage() {
 
           <p className="text-sm md:text-base text-slate-300 max-w-md">
             Diseñada para grupos de velocidad y vallas: porque el rendimiento no empieza
-            cuando suena el cronómetro. Se construye día a día
+            cuando suena el cronómetro.<br />Se construye día a día
             conectando entrenamiento, bienestar y evolución.
           </p>
 
