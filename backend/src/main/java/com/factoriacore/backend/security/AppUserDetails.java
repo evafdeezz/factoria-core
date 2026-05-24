@@ -4,11 +4,17 @@ import com.factoriacore.backend.models.User;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.core.user.OAuth2User;
-
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Clase que adapta el usuario de la aplicación al formato que espera Spring Security
+ * cuando se trabaja con autenticación OAuth2.
+ *
+ * Guarda tanto los datos propios del usuario como los atributos recibidos del proveedor
+ * OAuth2, y permite obtener su rol y su identificador principal dentro del sistema.
+ */
 public class AppUserDetails implements OAuth2User {
 
     private final User user;
@@ -26,6 +32,7 @@ public class AppUserDetails implements OAuth2User {
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
+        // Convierte el rol del usuario en una autoridad reconocida por Spring Security
         return List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()));
     }
 

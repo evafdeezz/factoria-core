@@ -8,9 +8,15 @@ import org.springframework.security.oauth2.client.userinfo.OAuth2UserService;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
-
 import java.util.Optional;
 
+/**
+ * Servicio encargado de cargar los datos del usuario autenticado con OAuth2.
+ *
+ * Primero obtiene la información que devuelve el proveedor externo, como Google.
+ * Después comprueba si ese usuario ya existe en la base de datos de la aplicación.
+ * Si existe, lo adapta a nuestro modelo de seguridad usando AppUserDetails.
+ */
 @Service
 public class CustomOAuth2UserService implements OAuth2UserService<OAuth2UserRequest, OAuth2User> {
 
@@ -28,9 +34,7 @@ public class CustomOAuth2UserService implements OAuth2UserService<OAuth2UserRequ
         String email = oauthUser.getAttribute("email");
         if (email == null) return oauthUser;
 
-        // Si el usuario ya existe en BD devolvemos AppUserDetails con nuestro User
-        // Si no existe (flujo de registro) devolvemos el OAuth2User genérico —
-        // OAuth2AuthenticationSuccessHandler se encarga del resto
+        // Buscamos si el usuario de OAuth2 ya está registrado en nuestra base de datos
         Optional<User> userOpt = userRepository.findByEmail(email);
         return userOpt
                 .map(user -> (OAuth2User) new AppUserDetails(user, oauthUser.getAttributes()))

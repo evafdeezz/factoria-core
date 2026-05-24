@@ -7,19 +7,14 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
-
 import java.io.IOException;
 
 /**
- * Filtro que protege los endpoints /api/n8n/** con una API Key.
+ * Filtro de seguridad que protege los endpoints de n8n mediante una API Key.
  *
- * n8n debe enviar el header:  X-API-Key: <tu-clave>
- *
- * Configura la clave en application.properties:
- *   n8n.api-key=tu-clave-secreta-aqui
- *
- * O como variable de entorno:
- *   N8N_API_KEY=tu-clave-secreta-aqui
+ * Cada petición a /api/n8n/** debe incluir el header X-API-Key. Si la clave
+ * no está configurada en el servidor o no coincide con la recibida, la petición
+ * se rechaza antes de llegar al controlador.
  */
 @Component
 public class ApiKeyFilter extends OncePerRequestFilter {
@@ -38,13 +33,13 @@ public class ApiKeyFilter extends OncePerRequestFilter {
 
         String path = request.getRequestURI();
 
-        // Solo aplicar a rutas de n8n
+        // Solo se valida la API Key en las rutas reservadas para n8n
         if (!path.startsWith(N8N_PATH_PREFIX)) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        // Si no hay API key configurada, rechazar todo (seguridad por defecto)
+        // Evitamos aceptar peticiones si la clave no está configurada
         if (expectedApiKey == null || expectedApiKey.isBlank()) {
             response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
             response.setContentType("application/json");
@@ -53,7 +48,7 @@ public class ApiKeyFilter extends OncePerRequestFilter {
             return;
         }
 
-        // Verificar el header
+        // Comprobamos la clave enviada en el header de la petición
         String providedKey = request.getHeader(API_KEY_HEADER);
         if (providedKey == null || !providedKey.equals(expectedApiKey)) {
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
@@ -63,7 +58,7 @@ public class ApiKeyFilter extends OncePerRequestFilter {
             return;
         }
 
-        // API key válida, continuar
+        // La petición ya está validada y puede continuar
         filterChain.doFilter(request, response);
     }
 }

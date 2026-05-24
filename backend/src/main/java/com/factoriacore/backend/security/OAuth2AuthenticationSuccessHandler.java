@@ -14,6 +14,13 @@ import org.springframework.stereotype.Component;
 import java.io.IOException;
 import java.util.Optional;
 
+/**
+ * Manejador que se ejecuta cuando la autenticación con Google termina correctamente.
+ *
+ * Según el modo guardado en sesión, decide si el usuario está intentando iniciar sesión
+ * o completar un registro. También actualiza los datos básicos del usuario cuando ya
+ * existe en la base de datos.
+ */
 @Component
 public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccessHandler {
 
@@ -43,6 +50,7 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
         HttpSession session = request.getSession(true);
         String mode = (String) session.getAttribute("OAUTH_MODE");
 
+        // Sin email no podemos relacionar la cuenta de Google con un usuario propio
         if (email == null || email.isBlank()) {
             clearOAuthSession(session);
             response.sendRedirect(frontendBaseUrl + "/login?tab=login&error=EMAIL_NOT_AVAILABLE");
@@ -51,6 +59,7 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
 
         Optional<User> existingUserOpt = userRepository.findByEmail(email);
 
+        // Flujo de registro: si el email ya existe, no dejamos crear otra cuenta
         if ("register".equals(mode)) {
             if (existingUserOpt.isPresent()) {
                 clearOAuthSession(session);
@@ -70,6 +79,7 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
             return;
         }
 
+        // Flujo de login: el usuario debe existir previamente en la aplicación
         if ("login".equals(mode)) {
             if (existingUserOpt.isEmpty()) {
                 clearOAuthSession(session);
@@ -92,6 +102,7 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
             return;
         }
 
+        // Si no hay un modo claro en sesión, resolvemos según si el usuario existe o no
         if (existingUserOpt.isPresent()) {
             User user = existingUserOpt.get();
 
