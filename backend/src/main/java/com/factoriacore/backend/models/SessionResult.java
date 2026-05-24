@@ -1,4 +1,5 @@
 package com.factoriacore.backend.models;
+
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
@@ -56,9 +57,6 @@ public class SessionResult {
     public TrainingSession getSession() { return session; }
     @JsonProperty("session")
     public void setSession(TrainingSession session) { this.session = session; }
-    public Long getSessionId() {
-        return session != null ? session.getId() : null;
-    }
 
     @JsonIgnore
     public AthleteProfile getAthlete() { return athlete; }
@@ -85,7 +83,4 @@ public class SessionResult {
 
     public String getVideoUrl() { return videoUrl; }
     public void setVideoUrl(String videoUrl) { this.videoUrl = videoUrl; }
-
-    public OffsetDateTime getRecordedAt() { return recordedAt; }
-    public void setRecordedAt(OffsetDateTime recordedAt) { this.recordedAt = recordedAt; }
 }

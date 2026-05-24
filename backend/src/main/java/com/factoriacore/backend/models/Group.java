@@ -4,7 +4,6 @@ import com.factoriacore.backend.models.enums.CompetitionCategory;
 import com.factoriacore.backend.models.enums.DisciplineType;
 import com.factoriacore.backend.models.enums.DistanceProfile;
 import jakarta.persistence.*;
-
 import java.time.OffsetDateTime;
 
 @Entity
@@ -90,10 +89,6 @@ public class Group {
         return description;
     }
 
-    public Long getCoachId() {
-        return coachId;
-    }
-
     public CompetitionCategory getCompetitionCategory() {
         return competitionCategory;
     }
@@ -106,16 +101,8 @@ public class Group {
         return distanceProfile;
     }
 
-    public String getJoinCode() {
-        return joinCode;
-    }
-
     public boolean isActive() {
         return active;
-    }
-
-    public OffsetDateTime getCreatedAt() {
-        return createdAt;
     }
 
     public void setId(Long id) {
@@ -128,10 +115,6 @@ public class Group {
 
     public void setDescription(String description) {
         this.description = description;
-    }
-
-    public void setCoachId(Long coachId) {
-        this.coachId = coachId;
     }
 
     public void setCompetitionCategory(CompetitionCategory competitionCategory) {
@@ -152,9 +135,5 @@ public class Group {
 
     public void setActive(boolean active) {
         this.active = active;
-    }
-
-    public void setCreatedAt(OffsetDateTime createdAt) {
-        this.createdAt = createdAt;
     }
 }

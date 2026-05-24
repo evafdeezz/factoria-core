@@ -3,7 +3,6 @@ package com.factoriacore.backend.models;
 import com.factoriacore.backend.models.enums.UserRole;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
-
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 
@@ -113,8 +112,4 @@ public class User {
 
     public OffsetDateTime getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(OffsetDateTime updatedAt) { this.updatedAt = updatedAt; }
-
-    @JsonIgnore
-    public AthleteProfile getAthleteProfile() { return athleteProfile; }
-    public void setAthleteProfile(AthleteProfile athleteProfile) { this.athleteProfile = athleteProfile; }
 }

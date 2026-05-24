@@ -3,7 +3,6 @@ package com.factoriacore.backend.models;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
-
 import java.time.OffsetDateTime;
 
 @Entity
@@ -57,7 +56,7 @@ public class GroupMember {
     @JsonProperty("group")
     public void setGroup(Group group) { this.group = group; }
 
-    /** Exposed as flat field for serialization — avoids lazy-loading Group */
+    // Se expone solo el ID para evitar cargar todo el grupo al serializar
     public Long getGroupId() {
         return group != null ? group.getId() : null;
     }
@@ -67,13 +66,12 @@ public class GroupMember {
     @JsonProperty("athlete")
     public void setAthlete(AthleteProfile athlete) { this.athlete = athlete; }
 
-    /** Exposed as flat field for serialization — avoids lazy-loading AthleteProfile */
+    // Se expone solo el ID para evitar cargar todo el perfil del deportista
     public Long getAthleteId() {
         return athlete != null ? athlete.getId() : null;
     }
 
     public OffsetDateTime getJoinedAt() { return joinedAt; }
-    public void setJoinedAt(OffsetDateTime joinedAt) { this.joinedAt = joinedAt; }
 
     public boolean isActive() { return active; }
     public void setActive(boolean active) { this.active = active; }

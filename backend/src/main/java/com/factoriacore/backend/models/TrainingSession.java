@@ -3,7 +3,6 @@ package com.factoriacore.backend.models;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
-
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
@@ -67,13 +66,6 @@ public class TrainingSession {
     @JsonProperty("group")
     public void setGroup(Group group) { this.group = group; }
 
-    public Long getGroupId() {
-        return group != null ? group.getId() : null;
-    }
-
     public Long getCoachId() { return coachId; }
     public void setCoachId(Long coachId) { this.coachId = coachId; }
-
-    public OffsetDateTime getCreatedAt() { return createdAt; }
-    public void setCreatedAt(OffsetDateTime createdAt) { this.createdAt = createdAt; }
 }

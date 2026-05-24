@@ -3,7 +3,6 @@ package com.factoriacore.backend.models;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
-
 import java.time.LocalDate;
 
 @Entity
@@ -14,7 +13,7 @@ public class WellnessEntry {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // No @JsonIgnore on the field — Jackson needs to reach the setter for deserialization
+    // Se mantiene accesible para que Jackson pueda asignar el deportista al recibir JSON
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "athlete_id", nullable = false)
     private AthleteProfile athlete;
