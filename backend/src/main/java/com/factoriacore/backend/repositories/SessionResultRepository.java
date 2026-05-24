@@ -11,6 +11,5 @@ public interface SessionResultRepository extends JpaRepository<SessionResult, Lo
 {
     List<SessionResult> findByAthlete_IdOrderByRecordedAtDesc(Long athleteId);
     List<SessionResult> findBySession_IdOrderByRecordedAtDesc(Long sessionId);
-
     Optional<SessionResult> findBySessionAndAthlete(TrainingSession session, AthleteProfile athlete);
 }
