@@ -1,4 +1,5 @@
 package com.factoriacore.backend.controllers;
+
 import com.factoriacore.backend.models.AthleteProfile;
 import com.factoriacore.backend.models.SessionResult;
 import com.factoriacore.backend.models.TrainingSession;

@@ -16,7 +16,6 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
-
 import java.time.LocalDate;
 import java.util.List;
 
@@ -52,7 +51,7 @@ public class PersonalSessionController {
         throw new ResponseStatusException(HttpStatus.UNAUTHORIZED);
     }
 
-    // Atleta — ver sus propias sesiones
+    // Para que el atleta pueda ver sus propias sesiones
     @GetMapping("/athlete/{athleteId}")
     public List<PersonalSession> getByAthlete(@PathVariable Long athleteId,
                                               Authentication authentication) {
@@ -71,7 +70,7 @@ public class PersonalSessionController {
         return repository.findByAthlete_IdOrderByDateDesc(athleteId);
     }
 
-    // Atleta — crear sesión personal
+    // Para que el atelta pueda crear una sesión personal
     @PostMapping
     public ResponseEntity<PersonalSession> create(@RequestBody PersonalSessionRequest request,
                                                   Authentication authentication) {
@@ -93,7 +92,7 @@ public class PersonalSessionController {
         return ResponseEntity.status(HttpStatus.CREATED).body(repository.save(session));
     }
 
-    // Atleta — eliminar sesión personal
+    // Para que el atleta pueda eliminar una sesión personal
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id,
                                        Authentication authentication) {

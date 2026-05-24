@@ -17,10 +17,10 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
-
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+
 
 @RestController
 @RequestMapping("/api/menstrual/{athleteId}/cycles/{cycleId}/entries")
@@ -151,7 +151,12 @@ public class MenstrualEntryController {
         return MenstrualPhase.LUTEAL;
     }
 
-    /** GET — todas las entradas de un ciclo */
+    /**
+     * GET — obtiene todas las entradas guardadas de un ciclo.
+     *
+     * Se usa para mostrar en el frontend los registros diarios del ciclo menstrual.
+     * No crea ni modifica información, solo consulta los datos existentes.
+     */
     @GetMapping
     public List<MenstrualEntry> getAll(@PathVariable Long athleteId,
                                        @PathVariable Long cycleId,
@@ -163,7 +168,12 @@ public class MenstrualEntryController {
         return entryRepository.findByCycle_IdOrderByDateAsc(cycleId);
     }
 
-    /** POST — crea o actualiza la entrada de un día */
+    /**
+     * POST — crea una entrada diaria o actualiza la que ya exista para esa fecha.
+     *
+     * El frontend envía los datos del día y el backend calcula automáticamente
+     * el día del ciclo y la fase menstrual estimada antes de guardar.
+     */
     @PostMapping
     public ResponseEntity<MenstrualEntry> save(@PathVariable Long athleteId,
                                                @PathVariable Long cycleId,
@@ -185,7 +195,7 @@ public class MenstrualEntryController {
         entry.setCycle(cycle);
         entry.setDate(targetDate);
 
-        // Estos campos los calcula siempre el backend.
+        // Estos valores se calculan en el backend para no depender del frontend
         entry.setCycleDay(cycleDay);
         entry.setEstimatedPhase(estimatedPhase);
 
@@ -212,7 +222,12 @@ public class MenstrualEntryController {
         return ResponseEntity.status(HttpStatus.CREATED).body(entryRepository.save(entry));
     }
 
-    /** DELETE — elimina una entrada */
+    /**
+     * DELETE — elimina una entrada concreta del ciclo.
+     *
+     * Antes de borrar, se comprueba que el usuario tenga permisos y que la entrada
+     * pertenezca realmente al ciclo indicado en la URL.
+     */
     @DeleteMapping("/{entryId}")
     public ResponseEntity<Void> delete(@PathVariable Long athleteId,
                                        @PathVariable Long cycleId,

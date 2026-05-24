@@ -6,7 +6,6 @@ import com.factoriacore.backend.repositories.AthleteProfileRepository;
 import com.factoriacore.backend.repositories.WellnessEntryRepository;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;

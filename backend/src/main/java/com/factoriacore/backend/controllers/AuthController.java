@@ -18,7 +18,6 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
-
 import java.io.IOException;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
@@ -65,11 +64,6 @@ public class AuthController {
         }
 
         public Long getId() { return id; }
-        public String getFullName() { return fullName; }
-        public String getEmail() { return email; }
-        public String getRole() { return role; }
-        public String getPictureUrl() { return pictureUrl; }
-        public Long getAthleteProfileId() { return athleteProfileId; }
     }
 
     public static class PendingOAuthUserDto {
@@ -82,7 +76,6 @@ public class AuthController {
             this.email = email;
             this.pictureUrl = pictureUrl;
         }
-
         public String getFullName() { return fullName; }
         public String getEmail() { return email; }
         public String getPictureUrl() { return pictureUrl; }
@@ -100,31 +93,22 @@ public class AuthController {
         private String lastPeriodDate;
 
         public String getRole() { return role; }
-        public void setRole(String role) { this.role = role; }
 
         public String getFullName() { return fullName; }
-        public void setFullName(String fullName) { this.fullName = fullName; }
 
         public String getBirthDate() { return birthDate; }
-        public void setBirthDate(String birthDate) { this.birthDate = birthDate; }
 
         public String getSex() { return sex; }
-        public void setSex(String sex) { this.sex = sex; }
 
         public Boolean getMenstrualTrackingEnabled() { return menstrualTrackingEnabled; }
-        public void setMenstrualTrackingEnabled(Boolean v) { this.menstrualTrackingEnabled = v; }
 
         public Boolean getShareMenstrualDataWithCoach() { return shareMenstrualDataWithCoach; }
-        public void setShareMenstrualDataWithCoach(Boolean v) { this.shareMenstrualDataWithCoach = v; }
 
         public Integer getCycleLength() { return cycleLength; }
-        public void setCycleLength(Integer cycleLength) { this.cycleLength = cycleLength; }
 
         public Integer getMenstrualDuration() { return menstrualDuration; }
-        public void setMenstrualDuration(Integer menstrualDuration) { this.menstrualDuration = menstrualDuration; }
 
         public String getLastPeriodDate() { return lastPeriodDate; }
-        public void setLastPeriodDate(String lastPeriodDate) { this.lastPeriodDate = lastPeriodDate; }
     }
 
     @GetMapping("/oauth/login")

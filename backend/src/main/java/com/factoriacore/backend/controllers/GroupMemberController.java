@@ -7,7 +7,6 @@ import com.factoriacore.backend.repositories.AthleteProfileRepository;
 import com.factoriacore.backend.repositories.GroupMemberRepository;
 import com.factoriacore.backend.repositories.GroupRepository;
 import org.springframework.web.bind.annotation.*;
-
 import java.util.List;
 import java.util.stream.Collectors;
 

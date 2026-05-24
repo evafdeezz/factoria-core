@@ -5,7 +5,6 @@ import com.factoriacore.backend.models.TrainingSession;
 import com.factoriacore.backend.repositories.SessionBlockRepository;
 import com.factoriacore.backend.repositories.TrainingSessionRepository;
 import org.springframework.web.bind.annotation.*;
-
 import java.util.List;
 
 @RestController

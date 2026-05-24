@@ -4,7 +4,6 @@ import com.factoriacore.backend.models.TrainingSession;
 import com.factoriacore.backend.repositories.GroupMemberRepository;
 import com.factoriacore.backend.repositories.TrainingSessionRepository;
 import org.springframework.web.bind.annotation.*;
-
 import java.time.LocalDate;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -25,9 +24,15 @@ public class AthleteTrainingController {
         this.sessionRepository = sessionRepository;
     }
 
+    /**
+     * GET — obtiene las sesiones de entrenamiento de hoy para un deportista.
+     *
+     * Primero se consultan los grupos activos del deportista y después se buscan
+     * las sesiones programadas para la fecha actual en cada uno de esos grupos.
+     */
     @GetMapping("/{athleteId}/sessions/today")
     public List<TrainingSession> getTodaySessionsForAthlete(@PathVariable Long athleteId) {
-        // Use JPQL query to get groupIds directly — avoids lazy-loading Group
+        // Se obtienen solo los IDs para evitar cargar grupos completos innecesariamente
         List<Long> groupIds = groupMemberRepository.findActiveGroupIdsByAthleteId(athleteId);
 
         Map<Long, TrainingSession> sessionMap = new LinkedHashMap<>();
@@ -43,6 +48,12 @@ public class AthleteTrainingController {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * GET — obtiene todas las sesiones asociadas a los grupos del deportista.
+     *
+     * Sirve para mostrar el historial completo de entrenamientos disponibles
+     * para ese deportista, ordenado desde las sesiones más recientes.
+     */
     @GetMapping("/{athleteId}/sessions")
     public List<TrainingSession> getAllSessionsForAthlete(@PathVariable Long athleteId) {
         List<Long> groupIds = groupMemberRepository.findActiveGroupIdsByAthleteId(athleteId);

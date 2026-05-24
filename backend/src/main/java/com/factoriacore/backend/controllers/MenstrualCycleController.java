@@ -17,7 +17,6 @@ import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
-
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
@@ -43,8 +42,7 @@ public class MenstrualCycleController {
         this.userRepository = userRepository;
     }
 
-    // ── Autenticación y autorización ────────────────────────────────────────────
-
+    // Autenticación y autorización de usuarios
     private User getCurrentUser(Authentication authentication) {
         if (authentication == null || authentication.getPrincipal() == null) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "NOT_AUTHENTICATED");
@@ -92,8 +90,7 @@ public class MenstrualCycleController {
         }
     }
 
-    // ── DTOs ────────────────────────────────────────────────────────────────────
-
+    // DTOs de respuesta
     public static class CycleStatusDto {
         public Long cycleId;
         public int cycleDay;
@@ -121,8 +118,7 @@ public class MenstrualCycleController {
         }
     }
 
-    // ── Endpoints ───────────────────────────────────────────────────────────────
-
+    // Endpoints del ciclo menstrual
     @GetMapping("/{athleteId}/status")
     public ResponseEntity<?> getCycleStatus(@PathVariable Long athleteId,
                                             Authentication authentication) {
@@ -299,8 +295,7 @@ public class MenstrualCycleController {
         return menstrualCycleRepository.findByAthlete_IdOrderByStartDateDesc(athleteId);
     }
 
-    // ── Helpers ─────────────────────────────────────────────────────────────────
-
+    // Lógica de fases del ciclo
     private MenstrualPhase calculatePhase(int cycleDay, int menstrualDuration, int cycleLength) {
         int ovulationDay = Math.max(1, cycleLength - 14);
         int ovulationStart = Math.max(menstrualDuration + 1, ovulationDay - 1);
