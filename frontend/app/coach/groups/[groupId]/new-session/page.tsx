@@ -6,7 +6,7 @@ import { createTrainingSession, CreateTrainingSessionPayload } from "@/lib/train
 import { getGroup } from "@/lib/groups";
 import { useCurrentUser } from "@/components/CurrentUserProvider";
 
-// ─── Constants ────────────────────────────────────────────────────────────────
+// Opciones y estilos que se reutilizan en toda la pantalla.
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL || "https://factoriacore.duckdns.org/api";
@@ -55,10 +55,10 @@ const BLOCK_ACCENTS: Record<string, string> = {
   OTHER:       "text-slate-400",
 };
 
-// ─── Types ─────────────────────────────────────────────────────────────────────
+// Estructura temporal de un bloque mientras se está editando el formulario.
 
 interface BlockDraft {
-  uid: string; // local only, for React keys
+  uid: string; // Solo se usa en el frontend para que React identifique cada bloque.
   blockType: string;
   target: string;
   title: string;
@@ -66,6 +66,7 @@ interface BlockDraft {
 }
 
 function makeBlock(blockType = "MAIN_SET"): BlockDraft {
+  // Genera un bloque vacío con valores por defecto.
   return {
     uid: Math.random().toString(36).slice(2),
     blockType,
@@ -75,7 +76,7 @@ function makeBlock(blockType = "MAIN_SET"): BlockDraft {
   };
 }
 
-// ─── Main component ────────────────────────────────────────────────────────────
+// Pantalla para crear una nueva sesión de entrenamiento dentro de un grupo.
 
 export default function NewGroupSessionPage() {
   const params = useParams();
@@ -84,10 +85,10 @@ export default function NewGroupSessionPage() {
   const groupId = Number(params.groupId);
   const [groupName, setGroupName] = useState<string | null>(null);
 
-  // Session header state
+  // Datos generales de la sesión.
   const today = new Date().toISOString().split("T")[0];
 
-  // Load group name
+  // Cargamos el nombre del grupo para mostrarlo en el encabezado.
   useEffect(() => {
     if (!Number.isNaN(groupId)) {
       getGroup(groupId).then(g => setGroupName(g.name)).catch(() => {});
@@ -98,15 +99,15 @@ export default function NewGroupSessionPage() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
 
-  // Blocks state
+  // Lista de bloques que forman la sesión. Se empieza con una estructura típica.
   const [blocks, setBlocks] = useState<BlockDraft[]>([makeBlock("WARMUP"), makeBlock("MAIN_SET"), makeBlock("COOLDOWN")]);
 
-  // UI state
+  // Estados de apoyo para mostrar carga, errores y mensajes de progreso.
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [progress, setProgress] = useState<string | null>(null);
 
-  // ── Guards ───────────────────────────────────────────────────────────────────
+  // Validaciones iniciales: usuario conectado, rol correcto y grupo válido.
 
   if (!user) {
     return (
@@ -132,9 +133,10 @@ export default function NewGroupSessionPage() {
     );
   }
 
-  // ── Block helpers ─────────────────────────────────────────────────────────────
+  // Funciones auxiliares para modificar, añadir, eliminar y ordenar bloques.
 
   const updateBlock = (uid: string, field: keyof BlockDraft, value: string) => {
+    // Actualiza solo el campo cambiado sin tocar el resto del bloque.
     setBlocks((prev) =>
       prev.map((b) => (b.uid === uid ? { ...b, [field]: value } : b))
     );
@@ -149,6 +151,7 @@ export default function NewGroupSessionPage() {
   };
 
   const moveBlock = (uid: string, dir: -1 | 1) => {
+    // Cambia la posición de un bloque hacia arriba o hacia abajo.
     setBlocks((prev) => {
       const idx = prev.findIndex((b) => b.uid === uid);
       if (idx < 0) return prev;
@@ -160,7 +163,7 @@ export default function NewGroupSessionPage() {
     });
   };
 
-  // ── Submit ────────────────────────────────────────────────────────────────────
+  // Envío del formulario: primero se crea la sesión y después sus bloques.
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -172,7 +175,7 @@ export default function NewGroupSessionPage() {
       return;
     }
 
-    // Validate blocks
+    // Comprobamos que cada bloque tenga al menos una descripción.
     for (let i = 0; i < blocks.length; i++) {
       if (!blocks[i].description.trim()) {
         setError(`El bloque ${i + 1} (${BLOCK_TYPES.find(t => t.value === blocks[i].blockType)?.label}) necesita una descripción.`);
@@ -181,9 +184,10 @@ export default function NewGroupSessionPage() {
     }
 
     try {
+      // Mientras se guarda, bloqueamos el botón para evitar envíos duplicados.
       setSaving(true);
 
-      // 1 — Create the session
+      // Primero guardamos los datos generales de la sesión.
       setProgress("Creando sesión...");
       const payload: CreateTrainingSessionPayload = {
         date,
@@ -195,7 +199,7 @@ export default function NewGroupSessionPage() {
       };
       const session = await createTrainingSession(payload);
 
-      // 2 — Create each block in order
+      // Después guardamos los bloques respetando el orden que aparece en pantalla.
       for (let i = 0; i < blocks.length; i++) {
         const block = blocks[i];
         setProgress(`Guardando bloque ${i + 1} de ${blocks.length}...`);
@@ -222,6 +226,7 @@ export default function NewGroupSessionPage() {
       }
 
       setProgress("¡Sesión creada!");
+      // Dejamos un pequeño margen para que el usuario vea el mensaje antes de volver al grupo.
       setTimeout(() => router.push(`/coach/groups/${groupId}`), 600);
 
     } catch (err) {
@@ -229,11 +234,12 @@ export default function NewGroupSessionPage() {
       setError(err instanceof Error ? err.message : "No se ha podido crear la sesión.");
       setProgress(null);
     } finally {
+      // Pase lo que pase, volvemos a habilitar el formulario.
       setSaving(false);
     }
   };
 
-  // ── Render ────────────────────────────────────────────────────────────────────
+  // Vista principal del formulario.
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-sky-900 text-slate-50 px-4 py-6">
@@ -252,7 +258,7 @@ export default function NewGroupSessionPage() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
 
-          {/* ── Session header ───────────────────────────────────────────── */}
+          {/* Datos generales de la sesión */}
           <div className="bg-slate-900/60 border border-slate-800 rounded-2xl shadow-xl p-4 space-y-4">
             <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
               Datos de la sesión
@@ -286,7 +292,7 @@ export default function NewGroupSessionPage() {
             </div>
           </div>
 
-          {/* ── Blocks ───────────────────────────────────────────────────── */}
+          {/* Bloques de entrenamiento */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
@@ -308,7 +314,7 @@ export default function NewGroupSessionPage() {
               <div key={block.uid}
                 className={`border rounded-2xl p-4 space-y-3 ${BLOCK_COLORS[block.blockType] ?? BLOCK_COLORS.OTHER}`}>
 
-                {/* Block header */}
+                {/* Cabecera del bloque: número, mover y eliminar */}
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span className={`text-[10px] font-bold uppercase tracking-wider ${BLOCK_ACCENTS[block.blockType] ?? BLOCK_ACCENTS.OTHER}`}>
@@ -331,7 +337,7 @@ export default function NewGroupSessionPage() {
                   </div>
                 </div>
 
-                {/* Type + Target */}
+                {/* Tipo de bloque y grupo de atletas al que va dirigido */}
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-[10px] font-medium text-slate-400 mb-1">Tipo</label>
@@ -355,7 +361,7 @@ export default function NewGroupSessionPage() {
                   </div>
                 </div>
 
-                {/* Title (optional) */}
+                {/* Título opcional del bloque */}
                 <div>
                   <label className="block text-[10px] font-medium text-slate-400 mb-1">
                     Título del bloque <span className="text-slate-600">(opcional)</span>
@@ -366,7 +372,7 @@ export default function NewGroupSessionPage() {
                     className="w-full border border-slate-700 rounded-lg bg-slate-950/50 px-2 py-1.5 text-xs text-slate-100 placeholder:text-slate-600 focus:outline-none focus:border-sky-500/50" />
                 </div>
 
-                {/* Description */}
+                {/* Descripción obligatoria del trabajo a realizar */}
                 <div>
                   <label className="block text-[10px] font-medium text-slate-400 mb-1">
                     Descripción <span className="text-red-400/70">*</span>
@@ -380,7 +386,7 @@ export default function NewGroupSessionPage() {
               </div>
             ))}
 
-            {/* Add block shortcut buttons */}
+            {/* Botones rápidos para añadir bloques de un tipo concreto */}
             <div className="flex flex-wrap gap-2 pt-1">
               {BLOCK_TYPES.map((t) => (
                 <button key={t.value} type="button"
@@ -392,7 +398,7 @@ export default function NewGroupSessionPage() {
             </div>
           </div>
 
-          {/* ── Feedback & Submit ─────────────────────────────────────────── */}
+          {/* Mensajes de error/progreso y botón final */}
           {error && (
             <p className="text-xs text-red-300 bg-red-900/40 border border-red-700 rounded-lg px-3 py-2">
               {error}

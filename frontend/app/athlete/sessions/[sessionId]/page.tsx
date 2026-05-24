@@ -117,7 +117,7 @@ function SessionDetailInner() {
           <p className="text-xs text-red-300 bg-red-900/40 border border-red-700 rounded-lg px-3 py-2">{error}</p>
         )}
 
-        {/* Enlace de vídeo si existe resultado con vídeo */}
+        {/* Enlace de vídeo si hay */}
         {result?.videoUrl && (
           <div className="bg-slate-900/60 border border-slate-800 rounded-2xl px-4 py-3 flex items-center gap-2">
             <span className="text-[10px] uppercase tracking-wider text-slate-400 flex-shrink-0">Vídeo</span>

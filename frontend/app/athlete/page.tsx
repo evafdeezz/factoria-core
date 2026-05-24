@@ -39,7 +39,7 @@ export default function AthleteHomePage() {
   const [logoutLoading,    setLogoutLoading]    = useState(false);
   const [error,            setError]            = useState<string | null>(null);
 
-  // Modal nueva sesión personal
+  // Modal para una nueva sesión personal
   const [showNewModal, setShowNewModal] = useState(false);
   const [newForm, setNewForm] = useState<{
     title: string; type: "TRAINING" | "COMPETITION"; notes: string;
@@ -91,7 +91,7 @@ export default function AthleteHomePage() {
         if (active.length > 0 && active[0].groupId) {
           groupData = await getGroup(active[0].groupId);
         }
-      } catch { /* no bloqueamos */ }
+      } catch { }
 
       setWellness(wellnessData);
       setSessions(sessionsData);
@@ -309,7 +309,7 @@ export default function AthleteHomePage() {
             </div>
           )}
 
-          {/* Botón añadir sesión propia */}
+          {/* Botón para añadir una sesión propia */}
           <button
             type="button"
             onClick={() => { setNewForm({ title: "", type: "TRAINING", notes: "" }); setNewError(null); setShowNewModal(true); }}

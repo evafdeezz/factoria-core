@@ -163,7 +163,7 @@ export default function CoachSessionPreviewPage() {
           ))}
         </div>
 
-        {/* Nota informativa */}
+        { }
         <p className="text-[10px] text-slate-600 text-center pt-2">
           Así ven los atletas esta sesión · Los resultados los registran ellos desde su panel
         </p>

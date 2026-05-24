@@ -29,7 +29,6 @@ function getOAuthErrorMessage(code: string | null): string | null {
   }
 }
 
-// Componente interno que usa useSearchParams — necesita estar dentro de <Suspense>
 function LoginContent() {
   const searchParams = useSearchParams();
 

@@ -6,26 +6,34 @@ import { getGroup, GroupDto, deleteGroup } from "@/lib/groups";
 import { getGroupMembersDetailed, GroupMemberDetailDto } from "@/lib/groupMembers";
 import { TrainingSessionDto } from "@/lib/trainingSessions";
 
+// URL base de la API. Si no existe variable de entorno, usamos la URL de producción.
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL || "https://factoriacore.duckdns.org/api";
 
+// Textos del calendario en español para mostrar los días y meses en la interfaz.
 const DAYS_ES   = ["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"];
 const MONTHS_ES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio",
                    "Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
 
+// Construye las celdas del calendario del mes actual.
+// Los null representan huecos antes del día 1 o después del último día del mes.
 function buildCalendarDays(year: number, month: number): (number | null)[] {
   const startOffset = (new Date(year, month, 1).getDay() + 6) % 7;
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const cells: (number | null)[] = Array(startOffset).fill(null);
+
   for (let d = 1; d <= daysInMonth; d++) cells.push(d);
   while (cells.length % 7 !== 0) cells.push(null);
+
   return cells;
 }
 
+// Devuelve una fecha en formato YYYY-MM-DD para poder comparar sesiones por día.
 function dateKey(year: number, month: number, day: number) {
   return `${year}-${String(month + 1).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
 }
 
+// Color del punto que marca los días con sesiones en el calendario.
 const SESSION_DOT = "bg-sky-400";
 
 export default function GroupDashboardPage() {
@@ -33,34 +41,45 @@ export default function GroupDashboardPage() {
   const router  = useRouter();
   const groupId = Number(params.groupId);
 
+  // Estado principal de la pantalla: grupo, miembros y sesiones asociadas.
   const [group,       setGroup]       = useState<GroupDto | null>(null);
   const [members,     setMembers]     = useState<GroupMemberDetailDto[]>([]);
   const [allSessions, setAllSessions] = useState<TrainingSessionDto[]>([]);
+
+  // Estados de control para carga, errores y acciones de borrado.
   const [deletingId,  setDeletingId]  = useState<number | null>(null);
   const [loading,     setLoading]     = useState(true);
   const [error,       setError]       = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting,    setDeleting]    = useState(false);
 
+  // Estado del calendario: mes visible y día seleccionado.
   const today = new Date();
   const [viewYear,     setViewYear]     = useState(today.getFullYear());
   const [viewMonth,    setViewMonth]    = useState(today.getMonth());
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
+  // Carga los datos del grupo, sus miembros y sus sesiones al entrar en la página.
   useEffect(() => {
     if (Number.isNaN(groupId)) return;
+
     async function load() {
       try {
         setLoading(true);
         setError(null);
+
+        // Hacemos las tres peticiones a la vez para que la pantalla cargue más rápido.
         const [g, mem, allRes] = await Promise.all([
           getGroup(groupId),
           getGroupMembersDetailed(groupId),
           fetch(`${API_BASE_URL}/sessions/group/${groupId}`, { cache: "no-store", credentials: "include" })
             .then(r => r.ok ? r.json() : []),
         ]);
+
         setGroup(g);
         setMembers(mem);
+
+        // Ordenamos las sesiones de más reciente a más antigua.
         setAllSessions([...(allRes as TrainingSessionDto[])].sort(
           (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
         ));
@@ -71,15 +90,19 @@ export default function GroupDashboardPage() {
         setLoading(false);
       }
     }
+
     void load();
   }, [groupId]);
 
+  // Agrupa las sesiones por fecha para encontrarlas rápido al pintar el calendario.
   const sessionsByDate = useMemo(() => {
     const map: Record<string, TrainingSessionDto[]> = {};
+
     for (const s of allSessions) {
       if (!map[s.date]) map[s.date] = [];
       map[s.date].push(s);
     }
+
     return map;
   }, [allSessions]);
 
@@ -87,17 +110,31 @@ export default function GroupDashboardPage() {
   const selectedSessions = selectedDate ? (sessionsByDate[selectedDate] ?? []) : [];
   const todayKey         = dateKey(today.getFullYear(), today.getMonth(), today.getDate());
 
+  // Cambia al mes anterior y limpia la selección del día.
   function prevMonth() {
-    if (viewMonth === 0) { setViewMonth(11); setViewYear(y => y - 1); }
-    else setViewMonth(m => m - 1);
-    setSelectedDate(null);
-  }
-  function nextMonth() {
-    if (viewMonth === 11) { setViewMonth(0); setViewYear(y => y + 1); }
-    else setViewMonth(m => m + 1);
+    if (viewMonth === 0) {
+      setViewMonth(11);
+      setViewYear(y => y - 1);
+    } else {
+      setViewMonth(m => m - 1);
+    }
+
     setSelectedDate(null);
   }
 
+  // Cambia al mes siguiente y limpia la selección del día.
+  function nextMonth() {
+    if (viewMonth === 11) {
+      setViewMonth(0);
+      setViewYear(y => y + 1);
+    } else {
+      setViewMonth(m => m + 1);
+    }
+
+    setSelectedDate(null);
+  }
+
+  // Elimina el grupo completo y vuelve al panel del entrenador si todo va bien.
   const handleDeleteGroup = async () => {
     try {
       setDeleting(true);
@@ -110,14 +147,20 @@ export default function GroupDashboardPage() {
     }
   };
 
+  // Elimina una sesión concreta y actualiza la lista local sin recargar la página.
   const handleDeleteSession = async (sessionId: number) => {
     if (!confirm("¿Eliminar esta sesión? Esta acción no se puede deshacer.")) return;
+
     try {
       setDeletingId(sessionId);
+
       const res = await fetch(`${API_BASE_URL}/sessions/${sessionId}`, {
-        method: "DELETE", credentials: "include",
+        method: "DELETE",
+        credentials: "include",
       });
+
       if (!res.ok) throw new Error();
+
       setAllSessions(prev => prev.filter(s => s.id !== sessionId));
     } catch {
       setError("No se ha podido eliminar la sesión.");
@@ -126,12 +169,14 @@ export default function GroupDashboardPage() {
     }
   };
 
+  // Pantalla sencilla mientras se están cargando los datos.
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-sky-900 text-slate-100">
       <p className="text-sm text-slate-300">Cargando grupo...</p>
     </div>
   );
 
+  // Si no encontramos el grupo, mostramos un mensaje y un botón para volver.
   if (!group) return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-sky-900 text-slate-100">
       <div className="space-y-2 text-center">
@@ -145,7 +190,7 @@ export default function GroupDashboardPage() {
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-sky-900 text-slate-50 px-4 py-6">
       <div className="max-w-5xl mx-auto space-y-5">
 
-        {/* Header */}
+        {/* Cabecera principal con acciones rápidas del grupo. */}
         <div className="flex items-center justify-between">
           <div>
             <p className="text-[10px] tracking-[0.2em] uppercase text-sky-300">Grupo</p>
@@ -174,7 +219,7 @@ export default function GroupDashboardPage() {
           </div>
         </div>
 
-        {/* Join code */}
+        {/* Código que se comparte con atletas para que puedan unirse al grupo. */}
         {group.joinCode && (
           <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-3 flex items-center justify-between">
             <div>
@@ -191,7 +236,7 @@ export default function GroupDashboardPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
 
-          {/* ── Calendario (2/3) ──────────────────────────────────────── */}
+          {/* Calendario principal. Ocupa más espacio porque es el elemento central de la pantalla. */}
           <div className="lg:col-span-2 space-y-4">
 
             <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 space-y-3">
@@ -212,6 +257,7 @@ export default function GroupDashboardPage() {
               <div className="grid grid-cols-7 gap-y-1">
                 {calendarDays.map((day, idx) => {
                   if (!day) return <div key={`e-${idx}`} />;
+
                   const key         = dateKey(viewYear, viewMonth, day);
                   const daySessions = sessionsByDate[key] ?? [];
                   const hasSession  = daySessions.length > 0;
@@ -235,6 +281,8 @@ export default function GroupDashboardPage() {
                           : hasSession ? "text-slate-100"
                           : "text-slate-500",
                       ].join(" ")}>{day}</span>
+
+                      {/* Indicadores visuales de sesiones. Como máximo se muestran tres puntos y luego un contador. */}
                       {hasSession && (
                         <div className="flex gap-0.5 mt-0.5 justify-center">
                           {daySessions.slice(0, 3).map((_, i) => (
@@ -251,7 +299,7 @@ export default function GroupDashboardPage() {
               </div>
             </div>
 
-            {/* Selected day panel */}
+            {/* Panel con las sesiones del día seleccionado en el calendario. */}
             {selectedDate && (
               <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 space-y-3">
                 <div className="flex items-center justify-between">
@@ -295,10 +343,10 @@ export default function GroupDashboardPage() {
             )}
           </div>
 
-          {/* ── Columna derecha (1/3) ─────────────────────────────────── */}
+          {/* Columna lateral con resumen del grupo y lista de atletas. */}
           <div className="space-y-5">
 
-            {/* Stats */}
+            {/* Resumen rápido del grupo. */}
             <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 space-y-3">
               <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Resumen</p>
               <div className="grid grid-cols-2 gap-2">
@@ -314,7 +362,7 @@ export default function GroupDashboardPage() {
               </div>
             </div>
 
-            {/* Members */}
+            {/* Lista de miembros del grupo con acceso al perfil de cada atleta. */}
             <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 space-y-2">
               <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
                 Miembros ({members.length})
@@ -340,7 +388,7 @@ export default function GroupDashboardPage() {
         </div>
       </div>
 
-      {/* Delete group modal */}
+      {/* Modal de confirmación antes de borrar el grupo completo. */}
       {showDeleteConfirm && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
           <div className="bg-slate-900 border border-slate-700 rounded-2xl p-5 max-w-sm mx-4 space-y-3">

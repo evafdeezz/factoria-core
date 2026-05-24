@@ -267,13 +267,11 @@ function AthleteSessionsCalendar() {
               return (
                 <button
                   key={key}
-                  // ← CAMBIO 1: todos los días son clicables
                   onClick={() => setSelectedDate(isSelected ? null : key)}
                   className={[
                     "relative flex flex-col items-center justify-start pt-1 pb-1 rounded-xl mx-0.5 min-h-[3rem] transition-all duration-150 cursor-pointer",
                     isSelected ? "bg-sky-600/30 border border-sky-500/60"
                       : hasAnything ? "hover:bg-slate-700/50 border border-transparent hover:border-slate-600/50"
-                      // ← CAMBIO 2: sin cursor-default, solo opacity
                       : "border border-transparent opacity-40",
                     _isToday && !isSelected ? "border border-sky-500/40" : "",
                   ].join(" ")}
@@ -306,7 +304,7 @@ function AthleteSessionsCalendar() {
           </div>
         </div>
 
-        {/* Panel día seleccionado */}
+        {/* Panel del día seleccionado */}
         {selectedDate && (
           <div className="bg-slate-900/60 border border-slate-800 rounded-2xl shadow p-4 space-y-3">
             <div className="flex items-center justify-between">

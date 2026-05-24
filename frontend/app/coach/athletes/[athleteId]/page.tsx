@@ -179,7 +179,7 @@ export default function CoachAthleteDetailPage() {
         setSessions(sess);
         setPersonalSessions(personal);
 
-        // Ciclo menstrual — status + historial + entradas del ciclo actual
+        // Ciclo menstrual: estado + historial + entradas del ciclo actual
         try {
           const cr = await fetch(`${API_BASE_URL}/menstrual/${pid}/status`,
             { credentials:"include", cache:"no-store" });
@@ -315,7 +315,7 @@ export default function CoachAthleteDetailPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
 
-          {/* ── Columna izquierda (2/3) ───────────────────────────────── */}
+          {/* Columna izquierda (2/3) */}
           <div className="lg:col-span-2 space-y-5">
 
             {/* Ciclo menstrual — expandible */}
@@ -616,7 +616,7 @@ export default function CoachAthleteDetailPage() {
             )}
           </div>
 
-          {/* ── Columna derecha (1/3) ─────────────────────────────────── */}
+          {/* Columna derecha (1/3) */}
           <div className="space-y-5">
 
             <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 space-y-3">
