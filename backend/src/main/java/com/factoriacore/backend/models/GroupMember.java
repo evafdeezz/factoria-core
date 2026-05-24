@@ -75,4 +75,6 @@ public class GroupMember {
 
     public boolean isActive() { return active; }
     public void setActive(boolean active) { this.active = active; }
+
+    public void setJoinedAt(OffsetDateTime joinedAt) { this.joinedAt = joinedAt; }
 }

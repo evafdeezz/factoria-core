@@ -66,6 +66,13 @@ public class TrainingSession {
     @JsonProperty("group")
     public void setGroup(Group group) { this.group = group; }
 
+    public Long getGroupId() {
+        return group != null ? group.getId() : null;
+    }
+
     public Long getCoachId() { return coachId; }
     public void setCoachId(Long coachId) { this.coachId = coachId; }
+
+    public OffsetDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(OffsetDateTime createdAt) { this.createdAt = createdAt; }
 }

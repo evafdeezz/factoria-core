@@ -112,4 +112,8 @@ public class User {
 
     public OffsetDateTime getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(OffsetDateTime updatedAt) { this.updatedAt = updatedAt; }
+
+    @JsonIgnore
+    public AthleteProfile getAthleteProfile() { return athleteProfile; }
+    public void setAthleteProfile(AthleteProfile athleteProfile) { this.athleteProfile = athleteProfile; }
 }

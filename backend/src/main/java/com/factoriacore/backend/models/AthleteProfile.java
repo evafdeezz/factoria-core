@@ -92,4 +92,11 @@ public class AthleteProfile {
 
     public LocalDate getLastPeriodDate() { return lastPeriodDate; }
     public void setLastPeriodDate(LocalDate lastPeriodDate) { this.lastPeriodDate = lastPeriodDate; }
+
+    public boolean isActive() { return active; }
+    public void setActive(boolean active) { this.active = active; }
+
+    @JsonIgnore
+    public List<MenstrualCycle> getMenstrualCycles() { return menstrualCycles; }
+    public void setMenstrualCycles(List<MenstrualCycle> menstrualCycles) { this.menstrualCycles = menstrualCycles; }
 }

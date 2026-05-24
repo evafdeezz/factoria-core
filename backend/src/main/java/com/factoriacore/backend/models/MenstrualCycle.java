@@ -51,4 +51,8 @@ public class MenstrualCycle {
 
     public Integer getBleedingDays() { return bleedingDays; }
     public void setBleedingDays(Integer bleedingDays) { this.bleedingDays = bleedingDays; }
+
+    @JsonIgnore
+    public List<MenstrualEntry> getEntries() { return entries; }
+    public void setEntries(List<MenstrualEntry> entries) { this.entries = entries; }
 }

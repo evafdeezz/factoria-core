@@ -45,6 +45,10 @@ public class SessionBlock {
     @JsonProperty("session")
     public void setSession(TrainingSession session) { this.session = session; }
 
+    public Long getSessionId() {
+        return session != null ? session.getId() : null;
+    }
+
     public Integer getBlockOrder() { return blockOrder; }
     public void setBlockOrder(Integer blockOrder) { this.blockOrder = blockOrder; }
 

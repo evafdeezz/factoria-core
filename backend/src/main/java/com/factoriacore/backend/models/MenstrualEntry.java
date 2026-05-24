@@ -53,9 +53,12 @@ public class MenstrualEntry {
     @JsonProperty("cycle")
     public void setCycle(MenstrualCycle cycle) { this.cycle = cycle; }
 
+    public Long getCycleId() { return cycle != null ? cycle.getId() : null; }
+
     public LocalDate getDate() { return date; }
     public void setDate(LocalDate date) { this.date = date; }
 
+    public Integer getCycleDay() { return cycleDay; }
     public void setCycleDay(Integer cycleDay) { this.cycleDay = cycleDay; }
 
     public MenstrualPhase getEstimatedPhase() { return estimatedPhase; }
