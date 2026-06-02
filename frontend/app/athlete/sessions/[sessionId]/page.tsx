@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, Suspense } from "react";
-import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useCurrentUser } from "@/components/CurrentUserProvider";
 import { getBlocksBySession, SessionBlockDto } from "@/lib/sessionBlocks";
@@ -46,11 +46,19 @@ function SessionDetailInner() {
   const { user } = useCurrentUser();
   const sessionId = Number(params.sessionId);
 
+  const from = searchParams.get("from");
   const returnYear  = searchParams.get("returnYear");
   const returnMonth = searchParams.get("returnMonth");
-  const backHref = returnYear && returnMonth
-    ? `/athlete/sessions?year=${returnYear}&month=${returnMonth}`
-    : "/athlete/sessions";
+
+  const backHref =
+    from === "home"
+      ? "/athlete"
+      : returnYear && returnMonth
+      ? `/athlete/sessions?year=${returnYear}&month=${returnMonth}`
+      : "/athlete/sessions";
+
+  const backLabel =
+    from === "home" ? "← Volver al inicio" : "← Volver al calendario";
 
   const [blocks, setBlocks] = useState<SessionBlockDto[]>([]);
   const [result, setResult] = useState<SessionResultDto | null>(null);
@@ -108,7 +116,7 @@ function SessionDetailInner() {
               Registrar resultado
             </Link>
             <Link href={backHref} className="text-xs text-slate-300 hover:text-slate-100 underline">
-              ← Volver al calendario
+              {backLabel}
             </Link>
           </div>
         </div>

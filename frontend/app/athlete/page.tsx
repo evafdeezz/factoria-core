@@ -278,12 +278,21 @@ export default function AthleteHomePage() {
                   className="border border-slate-800 rounded-xl px-3 py-2.5 flex items-center justify-between text-sm bg-slate-950/40">
                   <div className="flex items-center gap-2">
                     <span className="w-2 h-2 rounded-full bg-sky-400 flex-shrink-0" />
-                    <p className="font-semibold text-slate-50">{session.title}</p>
+                    <Link href={`/athlete/sessions/${session.id}?from=home`}
+                      className="font-semibold text-slate-50 hover:text-sky-200 underline underline-offset-2">
+                      {session.title}
+                    </Link>
                   </div>
-                  <Link href={`/athlete/sessions/${session.id}/result`}
-                    className="text-[11px] font-semibold text-sky-300 hover:text-sky-200 flex-shrink-0 ml-3">
-                    Registrar resultado →
-                  </Link>
+                  <div className="flex items-center gap-3 flex-shrink-0 ml-3">
+                    <Link href={`/athlete/sessions/${session.id}?from=home`}
+                      className="text-[11px] text-slate-400 hover:text-slate-200">
+                      Ver →
+                    </Link>
+                    <Link href={`/athlete/sessions/${session.id}/result`}
+                      className="text-[11px] font-semibold text-sky-300 hover:text-sky-200">
+                      Registrar →
+                    </Link>
+                  </div>
                 </div>
               ))}
 
